@@ -128,11 +128,14 @@
 </div>
 
 <!-- Planet Key -->
-<div id="planet-key" class="info-panel">
-    <h3>Planet Facts</h3>
-    <ul id="planet-list">
-        <!-- JavaScript will populate this list -->
-    </ul>
+<button id="toggle-planet-facts">Show Planet Facts</button>
+<div id="planetFactsContainer" style="display: none;">
+    <div id="planet-key" class="info-panel">
+        <h3>Planet Facts</h3>
+        <ul id="planet-list">
+            <!-- JavaScript will populate this list -->
+        </ul>
+    </div>
 </div>
 
 <!-- Planet Info Modal -->
@@ -313,6 +316,20 @@
     }, false);
 
     animate();
+
+    // --- TOGGLE PLANET FACTS ---
+    const planetFactsContainer = document.getElementById('planetFactsContainer');
+    const togglePlanetFactsButton = document.getElementById('toggle-planet-facts');
+
+    togglePlanetFactsButton.addEventListener('click', () => {
+        if (planetFactsContainer.style.display === 'none') {
+            planetFactsContainer.style.display = 'block';
+            togglePlanetFactsButton.textContent = 'Hide Planet Facts';
+        } else {
+            planetFactsContainer.style.display = 'none';
+            togglePlanetFactsButton.textContent = 'Show Planet Facts';
+        }
+    });
 </script>
 </body>
 </html>
