@@ -125,18 +125,24 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
 </head>
 <body>
+
+<select id="language-select">
+    <option value="en">English</option>
+    <option value="zh">中文</option>
+</select>
+
 <div id="instructions" class="info-panel">
-    <strong>3D Solar System</strong><br>
-    - Drag to rotate<br>
-    - Scroll to zoom<br>
-    - Click a planet for more info
+    <strong data-translate="instructions">3D Solar System</strong><br>
+    <span data-translate="drag_rotate">- Drag to rotate</span><br>
+    <span data-translate="scroll_zoom">- Scroll to zoom</span><br>
+    <span data-translate="click_planet">- Click a planet for more info</span>
 </div>
 
 <!-- Planet Key -->
-<button id="toggle-planet-facts">Show Planet Facts</button>
+<button id="toggle-planet-facts" data-translate="show_planet_facts">Show Planet Facts</button>
 <div id="planetFactsContainer" style="display: none;">
     <div id="planet-key" class="info-panel">
-        <h3>Planet Facts</h3>
+        <h3 data-translate="planet_facts">Planet Facts</h3>
         <ul id="planet-list">
             <!-- JavaScript will populate this list -->
         </ul>
@@ -150,7 +156,7 @@
         <div id="fact-content">
             <!-- Fact will be displayed here -->
         </div>
-        <button id="close-modal" class="modal-button">Close</button>
+        <button id="close-modal" class="modal-button" data-translate="close">Close</button>
     </div>
 </div>
 
@@ -335,6 +341,89 @@
             togglePlanetFactsButton.textContent = 'Show Planet Facts';
         }
     });
+
+    // --- LANGUAGE SUPPORT ---
+    const translations = {
+        en: {
+            title: "3D Solar System",
+            instructions: "3D Solar System",
+            drag_rotate: "- Drag to rotate",
+            scroll_zoom: "- Scroll to zoom",
+            click_planet: "- Click a planet for more info",
+            show_planet_facts: "Show Planet Facts",
+            hide_planet_facts: "Hide Planet Facts",
+            planet_facts: "Planet Facts",
+            close: "Close",
+            Mercury: "A year on Mercury is just 88 Earth days long, but a day on Mercury lasts for 176 Earth days!",
+            Venus: "Venus rotates in the opposite direction to most planets in our solar system. This means the sun rises in the west and sets in the east.",
+            Earth: "The Earth's core is as hot as the surface of the Sun, reaching temperatures of up to 6,000° Celsius (10,800° Fahrenheit).",
+            Mars: "Mars is home to the tallest volcano in the solar system, Olympus Mons. It's three times the height of Mount Everest.",
+            Jupiter: "Jupiter's Great Red Spot is a giant storm that has been raging for at least 350 years. It's so big that three Earths could fit inside it.",
+            Saturn: "Saturn isn't the only planet with rings, but its are the most spectacular. The rings are made of billions of pieces of ice, rock, and dust.",
+            Uranus: "Uranus is tilted on its side at an angle of almost 98 degrees. This means it essentially orbits the Sun on its side.",
+            Neptune: "Neptune has the strongest winds in the solar system, reaching speeds of over 2,000 km/h (1,200 mph)."
+        },
+        zh: {
+            title: "3D 太阳系",
+            instructions: "3D 太阳系",
+            drag_rotate: "- 拖动旋转",
+            scroll_zoom: "- 滚动缩放",
+            click_planet: "- 点击行星获取更多信息",
+            show_planet_facts: "显示行星信息",
+            hide_planet_facts: "隐藏行星信息",
+            planet_facts: "行星信息",
+            close: "关闭",
+             Mercury: "水星上的一年只有 88 个地球日，但水星上的一天持续 176 个地球日！",
+            Venus: "金星的旋转方向与我们太阳系中的大多数行星相反。这意味着太阳从西边升起，从东边落下。",
+            Earth: "地球的地核与太阳表面一样炙热，温度高达 6,000 摄氏度（10,800 华氏度）。",
+            Mars: "火星是太阳系中最高火山奥林匹斯山脉的家园。它是埃佛勒斯峰的三倍高。",
+            Jupiter: "木星的大红斑是一场已经轰鸣了至少 350 年的巨大风暴。它大到足以容纳三个地球。",
+            Saturn: "土星不是唯一一个有环的行星，但它的环是最壮观的。这些环由数十亿块冰、岩石和尘埃组成。",
+            Uranus: "天王星以将近 98 度的角度倾斜地倾斜在一侧。这意味着它在本质上是侧向绕太阳轨道运行的。",
+            Neptune: "海王星拥有太阳系中最强的风，速度超过 2,000 公里/小时（1,200 英里/小时）。"
+        }
+    };
+
+    let currentLanguage = localStorage.getItem('language') || 'en';
+
+    function setLanguage(lang) {
+        currentLanguage = lang;
+        localStorage.setItem('language', lang);
+        updateContent();
+    }
+
+    function updateContent() {
+        const langData = translations[currentLanguage];
+        document.title = langData.title;
+        document.getElementById('instructions').innerHTML = `<strong>${langData.instructions}</strong><br>
+            ${langData.drag_rotate}<br>
+            ${langData.scroll_zoom}<br>
+            ${langData.click_planet}`;
+        document.getElementById('toggle-planet-facts').textContent = currentLanguage === 'en' ? langData.show_planet_facts : langData.hide_planet_facts;
+        document.querySelector('#planet-key h3').textContent = langData.planet_facts;
+        document.getElementById('close-modal').textContent = langData.close;
+
+        // Update planet facts in modal and key
+        modalPlanetName.textContent = modalPlanetName.textContent; // Keep planet name
+        factContent.innerHTML = `<p>${langData[modalPlanetName.textContent] || planetFacts[modalPlanetName.textContent]}</p>`;
+
+        const planetList = document.getElementById('planet-list');
+        planetList.innerHTML = ''; // Clear existing list
+        planets.forEach(planet => {
+            const listItem = document.createElement('li');
+            listItem.innerHTML = `<strong>${planet.name}</strong><span>${langData[planet.name] || planetFacts[planet.name]}</span>`;
+            planetList.appendChild(listItem);
+        });
+    }
+
+    document.getElementById('language-select').value = currentLanguage;
+    document.getElementById('language-select').addEventListener('change', (event) => {
+        setLanguage(event.target.value);
+    });
+
+    updateContent();
+
 </script>
 </body>
 </html>
+
