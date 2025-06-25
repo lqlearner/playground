@@ -347,7 +347,35 @@
 
         updateTexts();
 
-        window.addEventListener('resize', resizeCanvas);
+        // Touch event support for mobile swipe gestures
+let touchStartX = 0;
+let touchStartY = 0;
+
+canvas.addEventListener('touchstart', function(e) {
+    const touch = e.touches[0];
+    touchStartX = touch.clientX;
+    touchStartY = touch.clientY;
+}, false);
+
+canvas.addEventListener('touchend', function(e) {
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - touchStartX;
+    const dy = touch.clientY - touchStartY;
+    if (Math.abs(dx) > Math.abs(dy)) {
+        if (dx > 30 && canMove(current, 1, 0)) { current.x++; redraw(); } // Swipe Right
+        else if (dx < -30 && canMove(current, -1, 0)) { current.x--; redraw(); } // Swipe Left
+    } else {
+        if (dy > 30) { // Swipe Down
+            if (canMove(current, 0, 1)) current.y++;
+            redraw();
+        } else if (dy < -30) { // Swipe Up
+            rotate(current);
+            redraw();
+        }
+    }
+}, false);
+
+window.addEventListener('resize', resizeCanvas);
         function resizeCanvas() {
             const maxWidth = Math.min(window.innerWidth * 0.9, 300);
             const scale = maxWidth / 300;
