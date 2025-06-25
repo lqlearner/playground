@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fireworks</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #fireworkPrompt {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(255, 255, 255, 0.8);
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-family: Arial, sans-serif;
+            color: #333;
+            font-size: 16px;
+            z-index: 9999;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        }
+    </style>
+</head>
+<body>
+    <div id="fireworkPrompt">Click anywhere on the screen to see fireworks!</div>
+    <canvas id="fireworksCanvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('fireworksCanvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let fireworks = [];
+
+        class Firework {
+            constructor(x, y, targetX, targetY, color) {
+                this.x = x;
+                this.y = y;
+                this.targetX = targetX;
+                this.targetY = targetY;
+                this.color = color;
+                this.speed = 10;
+                this.gravity = 0.1;
+                this.trail = [];
+                this.trailLength = 10;
+                this.exploded = false;
+                this.particles = [];
+                this.angle = Math.atan2(targetY - y, targetX - x);
+                this.velocityX = Math.cos(this.angle) * this.speed;
+                this.velocityY = Math.sin(this.angle) * this.speed;
+            }
+
+            update() {
+                if (!this.exploded) {
+                    this.trail.push({ x: this.x, y: this.y });
+                    if (this.trail.length > this.trailLength) {
+                        this.trail.shift();
+                    }
+
+                    this.x += this.velocityX;
+                    this.y += this.velocityY + this.gravity;
+                     if (Math.abs(this.x - this.targetX) <= this.speed && Math.abs(this.y - this.targetY) <= this.speed) {
+                        this.explode();
+                    }
+                } else {
+                    for (let i = 0; i < this.particles.length; i++) {
+                        this.particles[i].update();
+                    }
+                }
+            }
+
+            draw() {
+                if (!this.exploded) {
+                    ctx.beginPath();
+                    ctx.moveTo(this.trail[0].x, this.trail[0].y);
+                    for (let i = 1; i < this.trail.length; i++) {
+                        ctx.lineTo(this.trail[i].x, this.trail[i].y);
+                    }
+                    ctx.strokeStyle = this.color;
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                } else {
+                    for (let i = 0; i < this.particles.length; i++) {
+                        this.particles[i].draw();
+                    }
+                }
+            }
+
+            explode() {
+                this.exploded = true;
+                const particleCount = 100;
+                for (let i = 0; i < particleCount; i++) {
+                    this.particles.push(new Particle(this.x, this.y, this.color));
+                }
+            }
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.size = 3;
+                this.speed = Math.random() * 5;
+                this.angle = Math.random() * Math.PI * 2;
+                this.velocityX = Math.cos(this.angle) * this.speed;
+                this.velocityY = Math.sin(this.angle) * this.speed;
+                this.gravity = 0.05;
+                this.alpha = 1;
+                this.decay = 0.01;
+            }
+
+            update() {
+                this.x += this.velocityX;
+                this.y += this.velocityY + this.gravity;
+                this.alpha -= this.decay;
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.globalAlpha = this.alpha;
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+
+        function createFirework(x, y) {
+            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+            const color = colors[Math.floor(Math.random() * colors.length)];
+            const targetX = x + (Math.random() - 0.5) * 200;
+            const targetY = y + (Math.random() - 0.5) * 200;
+            fireworks.push(new Firework(canvas.width / 2, canvas.height, targetX, targetY, color));
+        }
+
+        canvas.addEventListener('click', (e) => {
+            createFirework(e.clientX, e.clientY);
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = 0; i < fireworks.length; i++) {
+                fireworks[i].update();
+                fireworks[i].draw();
+
+                if (fireworks[i].exploded && fireworks[i].particles.length === 0) {
+                    fireworks.splice(i, 1);
+                    i--;
+                }
+            }
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        });
+    </script>
+
+    <script>
+    function injectFooter() {
+        if (document.getElementById('genwebapp-footer')) {
+            return;
+        }
+        const footerHTML = `
+            <div id="genwebapp-footer" style="position: fixed; bottom: 20px; left: 20px; right: 20px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 10px; padding: 15px; font-size: 14px; z-index: 9999; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: flex; align-items: center; justify-content: space-between;">
+                <span style="flex-grow: 1; margin-right: 15px;"></span>
+                <button onclick="closeFooter()" title="关闭" style="background: none; border: none; font-size: 18px; cursor: pointer; padding: 0; color: #6c757d;">×</button>
+            </div>
+        `;
+        const footerElement = document.createElement('div');
+        footerElement.innerHTML = footerHTML;
+        document.body.appendChild(footerElement.firstElementChild);
+        setTimeout(closeFooter, 5000);
+    }
+    function closeFooter() {
+        const footer = document.getElementById('genwebapp-footer');
+        if (footer) {
+            footer.remove();
+        }
+    }
+    window.addEventListener('load', injectFooter);
+    </script>
+  </body>
+</html>
