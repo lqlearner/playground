@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>年度收入与利润趋势 (收入: 千, 利润: 百千)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0"></script>
+    <style>
+        body {
+            background: linear-gradient(135deg, #dbe9f4, #e0f7e9), url('https://www.transparenttextures.com/patterns/cubes.png');
+            background-blend-mode: overlay;
+            background-repeat: repeat;
+            font-family: 'Poppins', Arial, sans-serif;
+            text-align: center;
+            padding: 30px;
+        }
+        h2 {
+            font-size: 36px;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, #1a202c, #4a5568);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 1s ease-out forwards;
+        }
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        .chart-container {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(134, 250, 252, 0.4));
+            backdrop-filter: blur(18px);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.3), inset 0 0 15px rgba(0,0,0,0.1);
+            max-width: 1100px;
+            margin: auto;
+        }
+    </style>
+</head>
+<body>
+
+<h2>年度收入与利润趋势 (收入: 千, 利润: 百千)</h2>
+<div style="margin-bottom: 20px;">
+    <label for="incomeColor">选择收入柱颜色：</label>
+    <select id="incomeColor">
+        <option value="rgba(30, 144, 255, 1)">Dodger Blue</option>
+        <option value="rgba(0, 123, 255, 1)">Royal Blue</option>
+        <option value="rgba(0, 191, 255, 1)">Deep Sky Blue</option>
+        <option value="rgba(72, 209, 204, 1)">Medium Turquoise</option>
+        <option value="rgba(60, 179, 113, 1)">Medium Sea Green</option>
+        <option value="rgba(255, 165, 0, 1)">Orange</option>
+        <option value="rgba(255, 99, 132, 1)">Pink Red</option>
+        <option value="rgba(255, 140, 0, 1)">Dark Orange</option>
+        <option value="rgba(153, 102, 255, 1)">Purple</option>
+        <option value="rgba(255, 206, 86, 1)">Yellow</option>
+    </select>
+
+    <label for="profitColor" style="margin-left:20px;">选择利润线颜色：</label>
+    <select id="profitColor">
+        <option value="rgba(255, 0, 102, 1)">Hot Pink</option>
+        <option value="rgba(255, 99, 132, 1)">Light Red</option>
+        <option value="rgba(255, 69, 0, 1)">Orange Red</option>
+        <option value="rgba(255, 140, 0, 1)">Dark Orange</option>
+        <option value="rgba(60, 179, 113, 1)">Medium Sea Green</option>
+        <option value="rgba(0, 191, 255, 1)">Deep Sky Blue</option>
+        <option value="rgba(72, 209, 204, 1)">Medium Turquoise</option>
+        <option value="rgba(0, 123, 255, 1)">Royal Blue</option>
+        <option value="rgba(153, 102, 255, 1)">Purple</option>
+        <option value="rgba(255, 206, 86, 1)">Yellow</option>
+    </select>
+</div>
+<button id="startStopButton" style="margin: 10px 0; padding: 8px 16px; font-family: 'Poppins';">开始/停止颜色轮播</button>
+<div class="chart-container">
+    <canvas id="incomeProfitChart"></canvas>
+</div>
+
+<script>
+    const labels = ["2014年", "2015年", "2016年", "2017年", "2018年", "2019年", "2020年", "2021年", "2022年", "2023年"];
+    const incomeData = [9345.872, 12467.823, 18957.634, 25874.219, 33729.548, 41956.874, 56892.340, 68573.192, 82319.472, 99847.315];
+    const profitData = [-219.3432, -176.5421, 23.4567, 347.6298, 532.9857, 821.3475, 1134.5762, 1587.3496, 2156.9384, 2793.4562];
+
+    const ctx = document.getElementById('incomeProfitChart').getContext('2d');
+
+    const incomeBackgrounds = labels.map((label, index) => {
+        const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+        if (index <= 5) {
+            gradient.addColorStop(0, 'rgba(173, 216, 230, 0.8)');
+            gradient.addColorStop(1, 'rgba(0, 90, 200, 1)');
+        } else {
+            gradient.addColorStop(0, 'rgba(135, 206, 250, 0.9)');
+            gradient.addColorStop(0.3, 'rgba(135, 206, 250, 0.6)');
+            gradient.addColorStop(1, 'rgba(0, 90, 200, 1)');
+        }
+        return gradient;
+    });
+
+    const chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                {
+                    label: '利润 (百千)',
+                    data: profitData,
+                    type: 'line',
+                    borderColor: 'rgba(255, 0, 102, 1)',
+                    backgroundColor: 'rgba(0,0,0,0)',
+                    borderWidth: 4,
+                    fill: false,
+                    tension: 0.4,
+                    pointBackgroundColor: 'rgba(255, 0, 102, 1)',
+                    pointBorderColor: 'rgba(255, 0, 102, 1)',
+                    pointRadius: 6,
+                    pointHoverRadius: 12,
+                    pointHoverBackgroundColor: 'rgba(255, 0, 102, 1)',
+                    pointHoverBorderColor: 'rgba(255, 0, 102, 1)',
+                    pointHoverBorderWidth: 3,
+                    yAxisID: 'y1'
+                },
+                {
+                    label: '收入 (千)',
+                    data: incomeData,
+                    backgroundColor: incomeBackgrounds,
+                    borderColor: 'rgba(0, 90, 200, 1)',
+                    borderWidth: 1,
+                    hoverBackgroundColor: 'rgba(0, 60, 180, 1)',
+                    hoverBorderColor: 'rgba(0, 60, 180, 1)',
+                    borderSkipped: false,
+                    yAxisID: 'y'
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            animation: {
+                duration: 1500,
+                easing: 'easeOutBounce'
+            },
+            hover: {
+                mode: 'nearest',
+                intersect: true,
+                onHover: function(event, elements) {
+                    event.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+                }
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        color: '#333',
+                        font: {
+                            size: 16,
+                            family: 'Poppins'
+                        }
+                    }
+                },
+                title: {
+                    display: false
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label: function(context) {
+                            let unit = context.dataset.label.includes('利润') ? '百千' : '千';
+                            return context.dataset.label + ': ' + context.parsed.y.toLocaleString() + ' ' + unit;
+                        }
+                    }
+                },
+                datalabels: {
+                    anchor: function(context) {
+                        return context.dataset.type === 'line' ? 'center' : 'end';
+                    },
+                    align: function(context) {
+                        return context.dataset.type === 'line' ? 'bottom' : 'end';
+                    },
+                    formatter: function(value, context) {
+                        let unit = context.dataset.label.includes('利润') ? '百千' : '千';
+                        return value.toLocaleString() + ' ' + unit;
+                    },
+                    color: '#222',
+                    font: {
+                        weight: 'bold',
+                        size: 12,
+                        family: 'Poppins'
+                    },
+                    clamp: true
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: '收入 (千)'
+                    },
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#666',
+                        font: {
+                            size: 14,
+                            family: 'Poppins'
+                        },
+                        callback: function(value) {
+                            return value.toLocaleString() + ' 千';
+                        }
+                    }
+                },
+                y1: {
+                    beginAtZero: true,
+                    position: 'right',
+                    grid: {
+                        display: false,
+                        drawOnChartArea: false
+                    },
+                    title: {
+                        display: true,
+                        text: '利润 (百千)'
+                    },
+                    ticks: {
+                        color: '#666',
+                        font: {
+                            size: 14
+                        },
+                        callback: function(value) {
+                            return value.toLocaleString() + ' 百千';
+                        }
+                    }
+                },
+                x: {
+                    grid: {
+                        display: false
+                    },
+                    ticks: {
+                        color: '#666',
+                        font: {
+                            size: 14
+                        }
+                    }
+                }
+            }
+        },
+        plugins: [ChartDataLabels]
+    });
+
+document.getElementById('incomeColor').addEventListener('change', function() {
+    const selectedColor = this.value;
+    chart.data.datasets[1].backgroundColor = labels.map(() => selectedColor);
+    chart.data.datasets[1].borderColor = selectedColor;
+    chart.update();
+});
+
+document.getElementById('profitColor').addEventListener('change', function() {
+    const selectedColor = this.value;
+    chart.data.datasets[0].borderColor = selectedColor;
+    chart.data.datasets[0].pointBackgroundColor = selectedColor;
+    chart.data.datasets[0].pointBorderColor = selectedColor;
+    chart.data.datasets[0].pointHoverBackgroundColor = selectedColor;
+    chart.data.datasets[0].pointHoverBorderColor = selectedColor;
+    chart.update();
+});
+
+let colorInterval = null;
+let running = false;
+
+function startColorCycle() {
+    const incomeSelect = document.getElementById('incomeColor');
+    const profitSelect = document.getElementById('profitColor');
+    let incomeIndex = 0;
+    let profitIndex = 0;
+
+    colorInterval = setInterval(function() {
+        incomeSelect.selectedIndex = incomeIndex;
+        profitSelect.selectedIndex = profitIndex;
+
+        incomeSelect.dispatchEvent(new Event('change'));
+        profitSelect.dispatchEvent(new Event('change'));
+
+        profitIndex++;
+        if (profitIndex >= profitSelect.options.length) {
+            profitIndex = 0;
+            incomeIndex++;
+            if (incomeIndex >= incomeSelect.options.length) {
+                incomeIndex = 0;
+            }
+        }
+    }, 1000);
+}
+
+document.getElementById('startStopButton').addEventListener('click', function() {
+    if (running) {
+        clearInterval(colorInterval);
+        running = false;
+        this.textContent = '开始颜色轮播';
+    } else {
+        startColorCycle();
+        running = true;
+        this.textContent = '停止颜色轮播';
+    }
+});
+</script>
+
+</body>
+</html>
