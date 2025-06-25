@@ -1,33 +1,31 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Tetris Basic</title>
+    <title>Tetris Basic Version</title>
     <style>
         body {
             background-color: white;
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
-            height: 100vh;
             margin: 0;
             font-family: Arial, sans-serif;
         }
         #container {
             display: flex;
             align-items: flex-start;
-            gap: 10px;
+            margin-top: 20px;
         }
-        canvas {
+        #gameCanvas {
             border: 1px solid black;
             background-color: #f9f9f9;
         }
         #side-panel {
             display: flex;
             flex-direction: column;
+            margin-left: 10px;
             align-items: center;
-            gap: 10px;
         }
         #nextCanvas {
             border: 1px solid black;
@@ -36,126 +34,126 @@
         #score {
             font-size: 18px;
             font-weight: bold;
+            margin: 10px 0;
         }
-        #speed-controls {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-        #controls {
-            margin-top: 10px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        button {
+        #speed-controls button, #language-select, #side-panel button {
+            margin: 5px 0;
             padding: 6px 12px;
             font-size: 14px;
+        }
+        #controls {
+            margin-top: 20px;
+        }
+        #controls button {
+            padding: 12px 24px;
+            font-size: 16px;
+            margin: 18px 36px; /* 原间距的3倍 */
         }
     </style>
 </head>
 <body>
+    <h2 id="title">Tetris</h2>
     <select id="language-select">
+        <option value="en" selected>English</option>
         <option value="zh">中文</option>
-        <option value="en">English</option>
     </select>
+
     <div id="container">
         <canvas id="gameCanvas" width="300" height="600"></canvas>
+
         <div id="side-panel">
             <canvas id="nextCanvas" width="120" height="120"></canvas>
-            <div id="score">得分: 0</div>
+            <div id="score">Score: 0</div>
+
             <div id="speed-controls">
-                <button id="speed-up-btn">级别速度增加</button>
-                <button id="speed-down-btn">级别速度减少</button>
+                <button id="speed-up-btn">Increase Speed</button>
+                <button id="speed-down-btn">Decrease Speed</button>
+                <button id="start-btn">Start Game</button>
+                <button id="pause-btn">Pause Game</button>
             </div>
         </div>
     </div>
+
     <div id="controls">
-        <button id="start-btn">开始游戏</button>
-        <button id="pause-btn">暂停游戏</button>
-        <button id="rotate-btn">旋转</button>
-        <button id="left-btn">左移</button>
-        <button id="right-btn">右移</button>
-        <button id="drop-btn">直接落下</button>
+        <button id="rotate-btn">Rotate</button>
+        <button id="left-btn">Left</button>
+        <button id="right-btn">Right</button>
+        <button id="drop-btn">Hard Drop</button>
     </div>
 
     <script>
-        const texts = {
-            zh: {
-                start: "开始游戏",
-                pause: "暂停游戏",
-                resume: "继续游戏",
-                rotate: "旋转",
-                left: "左移",
-                right: "右移",
-                drop: "直接落下",
-                speedUp: "级别速度增加",
-                speedDown: "级别速度减少",
-                score: "得分: ",
-                gameOver: "游戏结束，得分: "
-            },
-            en: {
-                start: "Start",
-                pause: "Pause",
-                resume: "Resume",
-                rotate: "Rotate",
-                left: "Left",
-                right: "Right",
-                drop: "Hard Drop",
-                speedUp: "Speed Up",
-                speedDown: "Speed Down",
-                score: "Score: ",
-                gameOver: "Game Over! Score: "
-            }
-        };
-
-        let currentLang = 'en';
-
-        document.getElementById('language-select').value = currentLang;
-document.getElementById('language-select').onchange = function() {
-            currentLang = this.value;
-            updateTexts();
-        };
-
-        function updateTexts() {
-            const t = texts[currentLang];
-            document.getElementById('start-btn').innerText = t.start;
-            document.getElementById('pause-btn').innerText = isPaused ? t.resume : t.pause;
-            document.getElementById('rotate-btn').innerText = t.rotate;
-            document.getElementById('left-btn').innerText = t.left;
-            document.getElementById('right-btn').innerText = t.right;
-            document.getElementById('drop-btn').innerText = t.drop;
-            document.getElementById('speed-up-btn').innerText = t.speedUp;
-            document.getElementById('speed-down-btn').innerText = t.speedDown;
-            document.getElementById('score').innerText = t.score + score;
-        }
-
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
         const nextCanvas = document.getElementById('nextCanvas');
         const nextCtx = nextCanvas.getContext('2d');
+
         const COLS = 10, ROWS = 20, BLOCK_SIZE = 30;
-        const NEXT_BLOCK_SIZE = 20;
         const colors = ["red", "green", "blue", "yellow", "cyan", "magenta", "orange"];
         const shapes = [
-            [[1, 1, 1, 1]],
-            [[1, 1], [1, 1]],
-            [[0,1,0],[1,1,1]],
-            [[1,0,0],[1,1,1]],
-            [[0,0,1],[1,1,1]],
-            [[0,1,1],[1,1,0]],
-            [[1,1,0],[0,1,1]]
+            [[1, 1, 1, 1]], [[1, 1], [1, 1]],
+            [[0, 1, 0], [1, 1, 1]], [[1, 0, 0], [1, 1, 1]],
+            [[0, 0, 1], [1, 1, 1]], [[0, 1, 1], [1, 1, 0]], [[1, 1, 0], [0, 1, 1]]
         ];
 
-        let board, current, nextPiece, interval, isPaused = false, gameOver = false, score = 0;
-        let dropInterval = 500;
+        let board, current, next, interval, dropInterval = 500, isPaused = false, gameOver = false, score = 0;
+
+        const texts = {
+            en: {
+                title: "Tetris",
+                score: "Score: ",
+                start: "Start Game",
+                pause: "Pause Game",
+                resume: "Resume Game",
+                speedUp: "Increase Speed",
+                speedDown: "Decrease Speed",
+                rotate: "Rotate",
+                left: "Left",
+                right: "Right",
+                drop: "Hard Drop",
+                gameOver: "Game Over! Score: "
+            },
+            zh: {
+                title: "俄罗斯方块",
+                score: "得分: ",
+                start: "开始游戏",
+                pause: "暂停游戏",
+                resume: "继续游戏",
+                speedUp: "级别速度增加",
+                speedDown: "级别速度减少",
+                rotate: "旋转",
+                left: "左移",
+                right: "右移",
+                drop: "直接落下",
+                gameOver: "游戏结束，得分: "
+            }
+        };
+
+        let lang = 'en';
+        const langSelect = document.getElementById('language-select');
+        langSelect.onchange = () => {
+            lang = langSelect.value;
+            updateTexts();
+        };
+
+        function updateTexts() {
+            document.getElementById('title').innerText = texts[lang].title;
+            document.getElementById('score').innerText = texts[lang].score + score;
+            document.getElementById('start-btn').innerText = texts[lang].start;
+            document.getElementById('pause-btn').innerText = isPaused ? texts[lang].resume : texts[lang].pause;
+            document.getElementById('speed-up-btn').innerText = texts[lang].speedUp;
+            document.getElementById('speed-down-btn').innerText = texts[lang].speedDown;
+            document.getElementById('rotate-btn').innerText = texts[lang].rotate;
+            document.getElementById('left-btn').innerText = texts[lang].left;
+            document.getElementById('right-btn').innerText = texts[lang].right;
+            document.getElementById('drop-btn').innerText = texts[lang].drop;
+        }
 
         function createBoard() {
             return Array.from({ length: ROWS }, () => Array(COLS).fill(0));
         }
 
         function drawGrid() {
-            ctx.strokeStyle = "#ddd";
+            ctx.strokeStyle = '#e0e0e0';
             for (let x = 0; x <= COLS; x++) {
                 ctx.beginPath();
                 ctx.moveTo(x * BLOCK_SIZE, 0);
@@ -189,45 +187,41 @@ document.getElementById('language-select').onchange = function() {
 
         function drawNext() {
             nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
-            let shape = nextPiece.shape;
-            let color = colors[nextPiece.color - 1];
-            for (let r = 0; r < shape.length; r++) {
-                for (let c = 0; c < shape[r].length; c++) {
-                    if (shape[r][c]) {
-                        nextCtx.fillStyle = color;
-                        nextCtx.fillRect(c * NEXT_BLOCK_SIZE + 20, r * NEXT_BLOCK_SIZE + 20, NEXT_BLOCK_SIZE, NEXT_BLOCK_SIZE);
-                        nextCtx.strokeStyle = "black";
-                        nextCtx.strokeRect(c * NEXT_BLOCK_SIZE + 20, r * NEXT_BLOCK_SIZE + 20, NEXT_BLOCK_SIZE, NEXT_BLOCK_SIZE);
-                    }
-                }
+            const size = 20;
+            nextCtx.strokeStyle = '#ccc';
+            for (let x = 0; x <= 5; x++) {
+                nextCtx.beginPath();
+                nextCtx.moveTo(x * size, 0);
+                nextCtx.lineTo(x * size, 120);
+                nextCtx.stroke();
             }
+            for (let y = 0; y <= 6; y++) {
+                nextCtx.beginPath();
+                nextCtx.moveTo(0, y * size);
+                nextCtx.lineTo(120, y * size);
+                nextCtx.stroke();
+            }
+            next.shape.forEach((row, r) => row.forEach((val, c) => {
+                if (val) {
+                    nextCtx.fillStyle = colors[next.color - 1];
+                    nextCtx.fillRect(c * size, r * size, size, size);
+                    nextCtx.strokeStyle = 'black';
+                    nextCtx.strokeRect(c * size, r * size, size, size);
+                }
+            }));
         }
 
-        function generatePiece() {
+        function newPiece() {
             const index = Math.floor(Math.random() * shapes.length);
-            return {
-                shape: shapes[index],
-                color: index + 1,
-                x: Math.floor((COLS - shapes[index][0].length) / 2),
-                y: 0
-            };
-        }
-
-        function spawnNewPiece() {
-            current = nextPiece;
-            nextPiece = generatePiece();
-            drawNext();
+            return { shape: shapes[index], color: index + 1, x: Math.floor((COLS - shapes[index][0].length) / 2), y: 0 };
         }
 
         function canMove(p, offsetX, offsetY, newShape = p.shape) {
             for (let r = 0; r < newShape.length; r++) {
                 for (let c = 0; c < newShape[r].length; c++) {
                     if (newShape[r][c]) {
-                        let newX = p.x + c + offsetX;
-                        let newY = p.y + r + offsetY;
-                        if (newX < 0 || newX >= COLS || newY >= ROWS || (newY >= 0 && board[newY][newX])) {
-                            return false;
-                        }
+                        let x = p.x + c + offsetX, y = p.y + r + offsetY;
+                        if (x < 0 || x >= COLS || y >= ROWS || (y >= 0 && board[y][x])) return false;
                     }
                 }
             }
@@ -235,35 +229,20 @@ document.getElementById('language-select').onchange = function() {
         }
 
         function mergePiece(p) {
-            for (let r = 0; r < p.shape.length; r++) {
-                for (let c = 0; c < p.shape[r].length; c++) {
-                    if (p.shape[r][c]) {
-                        let newY = p.y + r;
-                        if (newY >= 0) board[newY][p.x + c] = p.color;
-                    }
-                }
-            }
+            p.shape.forEach((row, r) => row.forEach((val, c) => {
+                if (val && p.y + r >= 0) board[p.y + r][p.x + c] = p.color;
+            }));
         }
 
         function clearLines() {
-            let linesCleared = 0;
-            for (let r = ROWS - 1; r >= 0; r--) {
-                if (board[r].every(cell => cell !== 0)) {
-                    board.splice(r, 1);
-                    board.unshift(Array(COLS).fill(0));
-                    linesCleared++;
-                    r++;
-                }
-            }
-            if (linesCleared > 0) {
-                score += linesCleared * 100;
-                document.getElementById('score').innerText = texts[currentLang].score + score;
-            }
-        }
-
-        function rotate(p) {
-            let newShape = p.shape[0].map((_, i) => p.shape.map(row => row[i])).reverse();
-            if (canMove(p, 0, 0, newShape)) p.shape = newShape;
+            let lines = 0;
+            board = board.filter(row => {
+                if (row.every(cell => cell)) { lines++; return false; }
+                return true;
+            });
+            while (board.length < ROWS) board.unshift(Array(COLS).fill(0));
+            score += lines * 100;
+            document.getElementById('score').innerText = texts[lang].score + score;
         }
 
         function drop() {
@@ -276,13 +255,13 @@ document.getElementById('language-select').onchange = function() {
                 if (current.y <= 0) {
                     gameOver = true;
                     clearInterval(interval);
-                    setTimeout(() => {
-                        alert(texts[currentLang].gameOver + score);
-                        location.reload();
-                    }, 100);
+                    alert(texts[lang].gameOver + score);
+                    location.reload();
                     return;
                 }
-                spawnNewPiece();
+                current = next;
+                next = newPiece();
+                drawNext();
             }
             redraw();
         }
@@ -293,21 +272,21 @@ document.getElementById('language-select').onchange = function() {
         }
 
         function drawPiece(p) {
-            for (let r = 0; r < p.shape.length; r++) {
-                for (let c = 0; c < p.shape[r].length; c++) {
-                    if (p.shape[r][c]) drawBlock(p.x + c, p.y + r, colors[p.color - 1]);
-                }
-            }
+            p.shape.forEach((row, r) => row.forEach((val, c) => {
+                if (val) drawBlock(p.x + c, p.y + r, colors[p.color - 1]);
+            }));
         }
 
         function startGame() {
             board = createBoard();
-            nextPiece = generatePiece();
-            spawnNewPiece();
-            gameOver = false;
+            current = newPiece();
+            next = newPiece();
             isPaused = false;
+            gameOver = false;
             score = 0;
-            document.getElementById('score').innerText = texts[currentLang].score + 0;
+            dropInterval = 500;
+            updateTexts();
+            drawNext();
             clearInterval(interval);
             interval = setInterval(drop, dropInterval);
             redraw();
@@ -316,47 +295,45 @@ document.getElementById('language-select').onchange = function() {
         function togglePause() {
             if (gameOver) return;
             isPaused = !isPaused;
-            document.getElementById('pause-btn').innerText = isPaused ? texts[currentLang].resume : texts[currentLang].pause;
-            if (isPaused) {
-                clearInterval(interval);
-            } else {
-                interval = setInterval(drop, dropInterval);
-            }
-        }
-
-        function adjustSpeed(change) {
-            dropInterval = Math.max(100, dropInterval + change);
-            clearInterval(interval);
-            interval = setInterval(drop, dropInterval);
+            updateTexts();
+            if (isPaused) clearInterval(interval);
+            else interval = setInterval(drop, dropInterval);
         }
 
         document.getElementById('start-btn').onclick = startGame;
         document.getElementById('pause-btn').onclick = togglePause;
-        document.getElementById('rotate-btn').onclick = () => { if (!gameOver && !isPaused) { rotate(current); redraw(); } };
-        document.getElementById('left-btn').onclick = () => { if (!gameOver && !isPaused && canMove(current, -1, 0)) { current.x--; redraw(); } };
-        document.getElementById('right-btn').onclick = () => { if (!gameOver && !isPaused && canMove(current, 1, 0)) { current.x++; redraw(); } };
-        document.getElementById('drop-btn').onclick = () => {
-            if (!gameOver && !isPaused) {
-                while (canMove(current, 0, 1)) current.y++;
-                drop();
-            }
+        document.getElementById('speed-up-btn').onclick = () => {
+            dropInterval = Math.max(100, dropInterval - 100);
+            if (!isPaused) { clearInterval(interval); interval = setInterval(drop, dropInterval); }
         };
-        document.getElementById('speed-up-btn').onclick = () => adjustSpeed(-100);
-        document.getElementById('speed-down-btn').onclick = () => adjustSpeed(100);
+        document.getElementById('speed-down-btn').onclick = () => {
+            dropInterval += 100;
+            if (!isPaused) { clearInterval(interval); interval = setInterval(drop, dropInterval); }
+        };
 
-        updateTexts();
-document.addEventListener('keydown', e => {
+        document.getElementById('rotate-btn').onclick = () => { if (!isPaused && canMove(current, 0, 0)) { rotate(current); redraw(); } };
+        document.getElementById('left-btn').onclick = () => { if (!isPaused && canMove(current, -1, 0)) { current.x--; redraw(); } };
+        document.getElementById('right-btn').onclick = () => { if (!isPaused && canMove(current, 1, 0)) { current.x++; redraw(); } };
+        document.getElementById('drop-btn').onclick = () => {
+            if (!isPaused) { while (canMove(current, 0, 1)) current.y++; redraw(); }
+        };
+
+        function rotate(p) {
+            let newShape = p.shape[0].map((_, i) => p.shape.map(row => row[i])).reverse();
+            if (canMove(p, 0, 0, newShape)) p.shape = newShape;
+        }
+
+        document.addEventListener('keydown', e => {
             if (gameOver || isPaused) return;
-            if (e.key === 'ArrowLeft' && canMove(current, -1, 0)) current.x--;
-            else if (e.key === 'ArrowRight' && canMove(current, 1, 0)) current.x++;
-            else if (e.key === 'ArrowDown' && canMove(current, 0, 1)) current.y++;
+            if (e.key === 'ArrowLeft') { if (canMove(current, -1, 0)) current.x--; }
+            else if (e.key === 'ArrowRight') { if (canMove(current, 1, 0)) current.x++; }
+            else if (e.key === 'ArrowDown') { if (canMove(current, 0, 1)) current.y++; }
             else if (e.key === 'ArrowUp') rotate(current);
-            else if (e.key.toLowerCase() === 'd') {
-                while (canMove(current, 0, 1)) current.y++;
-                drop();
-            }
+            else if (e.key.toLowerCase() === 'd') { while (canMove(current, 0, 1)) current.y++; }
             redraw();
         });
+
+        updateTexts();
     </script>
 </body>
 </html>
