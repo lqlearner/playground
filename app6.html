@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>Transformer 输出可视化演示</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 40px;
+    }
+    .output {
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    .bar-chart {
+      display: flex;
+      gap: 12px;
+      align-items: flex-end;
+      height: 150px;
+      margin-bottom: 20px;
+    }
+    .bar {
+      width: 40px;
+      background: #4A90E2;
+      text-align: center;
+      color: white;
+      border-radius: 4px 4px 0 0;
+      position: relative;
+    }
+    .bar span {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-bottom: 4px;
+      font-size: 14px;
+      color: #333;
+    }
+    .options {
+      margin-top: 10px;
+    }
+    .options button {
+      margin-right: 10px;
+      padding: 8px 14px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    .dice {
+      margin-top: 30px;
+      font-size: 60px;
+      text-align: center;
+      user-select: none;
+    }
+    .dice button {
+      font-size: 20px;
+      padding: 10px 20px;
+      margin: 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>Transformer 输出模拟器</h1>
+  <div class="output" id="output">我无法判断雪山的美</div>
+  <div id="chart" class="bar-chart"></div>
+  <div class="options" id="options"></div>
+  <div class="dice">
+    <div id="diceFace">🎲</div>
+    <button onclick="rollDice()">掷骰子</button>
+    <button onclick="restart()">重新开始</button>
+  </div>
+
+  <script>
+    const tree = {
+      "token": "美",
+      "children": [
+        {
+          "token": "丽",
+          "children": [
+            {"token": "因", "children": [
+              {"token": "为", "children": ["山势险峻"]},
+              {"token": "此", "children": ["选择在夏天登顶"]},
+              {"token": "为", "children": ["雪山的高度很高"]}
+            ]},
+            {"token": "程", "children": [
+              {"token": "度", "children": ["，但我相信在阳光的照耀下一定令人心碎"]}
+            ]},
+            {"token": "，", "children": [
+              {"token": "但", "children": ["我知道风景如画"]}
+            ]}
+          ]
+        },
+        {
+          "token": "好",
+          "children": [
+            {"token": "奇", "children": ["景……"]},
+            {"token": "，", "children": ["只因它在风中沉默不语……"]},
+            {"token": "。", "children": ["因为风只借过片刻，也未停留……"]}
+          ]
+        },
+        {
+          "token": "术",
+          "children": [
+            {"token": "，", "children": ["殊不知，雪山的美景，殊为壮观"]},
+            {"token": "。", "children": ["艺术无法用语言完全表达……"]}
+          ]
+        }
+      ]
+    };
+
+    let currentPath = "我无法判断雪山的美";
+
+    function renderOptions(node) {
+      const chart = document.getElementById("chart");
+      const options = document.getElementById("options");
+      chart.innerHTML = "";
+      options.innerHTML = "";
+
+      const probs = node.children.map(() => Math.random() * 100);
+      const total = probs.reduce((a, b) => a + b, 0);
+
+      node.children.forEach((child, i) => {
+        const pct = Math.round((probs[i] / total) * 100);
+
+        const bar = document.createElement("div");
+        bar.className = "bar";
+        bar.style.height = pct * 1.2 + "px";
+        bar.innerHTML = `<span>${child.token}<br>${pct}%</span>`;
+        chart.appendChild(bar);
+
+        const btn = document.createElement("button");
+        btn.innerText = child.token;
+        btn.onclick = () => {
+          currentPath += child.token;
+          document.getElementById("output").innerText = currentPath;
+          if (Array.isArray(child.children)) {
+            if (typeof child.children[0] === 'string') {
+              currentPath += child.children[0];
+              document.getElementById("output").innerText = currentPath;
+              chart.innerHTML = "";
+              options.innerHTML = "<em>生成结束</em>";
+            } else {
+              renderOptions(child);
+            }
+          } else {
+            chart.innerHTML = "";
+            options.innerHTML = "<em>生成结束</em>";
+          }
+        };
+        options.appendChild(btn);
+      });
+    }
+
+    function rollDice() {
+      const face = document.getElementById("diceFace");
+      const faces = ["1️⃣", "1️⃣", "2️⃣", "2️⃣", "3️⃣", "3️⃣"];
+      let count = 0;
+      const interval = setInterval(() => {
+        face.textContent = faces[Math.floor(Math.random() * 6)];
+        count++;
+        if (count > 20) {
+          clearInterval(interval);
+        }
+      }, 100);
+    }
+
+    function restart() {
+      currentPath = "我无法判断雪山的美";
+      document.getElementById("output").innerText = currentPath;
+      renderOptions(tree);
+    }
+
+    renderOptions(tree);
+  </script>
+</body>
+</html>
