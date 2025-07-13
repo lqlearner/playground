@@ -20,6 +20,8 @@
             --event-color-3: #dc3545; /* High */
             --time-text-color: #6c757d;
             --secondary-btn-bg: #6c757d;
+            --instructions-bg: #eef7ff;
+            --link-color: #0056b3;
         }
 
         body {
@@ -40,20 +42,20 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         }
 
-        /* --- MODIFICATION START: Header layout for new toggle button --- */
         .main-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
         }
         
         .main-header h1 {
-            margin: 0;
+            margin: 0 20px 0 0;
             color: var(--main-text-color);
         }
 
-        #toggle-input-btn {
+        #toggle-setup-btn {
             padding: 8px 16px;
             background-color: var(--secondary-btn-bg);
             color: white;
@@ -63,29 +65,41 @@
             font-size: 14px;
             font-weight: 500;
             transition: background-color 0.2s ease;
+            white-space: nowrap;
         }
 
-        #toggle-input-btn:hover {
+        #toggle-setup-btn:hover {
             background-color: #5a6268;
         }
-        /* --- MODIFICATION END --- */
-
-        #input-instructions {
-            margin-bottom: 25px;
-        }
-
-        .input-section {
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
+        
+        #setup-section {
+            border: 1px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
             margin-bottom: 30px;
         }
 
-        /* --- MODIFICATION START: Helper class for toggling visibility --- */
-        .hidden {
-            display: none;
+        .instructions {
+            background-color: var(--instructions-bg);
+            border: 1px solid #bde0fe;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
         }
-        /* --- MODIFICATION END --- */
+        .instructions h3 { margin-top: 0; }
+        .instructions ol { padding-left: 20px; margin-bottom: 0; }
+        .instructions li { margin-bottom: 10px; }
+        .instructions a {
+            color: var(--link-color);
+            font-weight: bold;
+            text-decoration: none;
+        }
+        .instructions a:hover {
+            text-decoration: underline;
+        }
+        
+        .input-area { display: flex; flex-direction: column; gap: 15px; }
+        .hidden { display: none; }
 
         #html-input {
             width: 100%;
@@ -109,172 +123,83 @@
             font-weight: bold;
             transition: background-color 0.2s ease;
         }
-
-        #convert-btn:hover {
-            background-color: #0056b3;
-        }
-        
-        #error-message {
-            color: var(--event-color-3);
-            text-align: center;
-            display: none;
-        }
-
-        #calendar-container {
-            margin-top: 20px;
-        }
-
-        .calendar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        
-        .calendar-header h2 {
-            margin: 0;
-            font-size: 24px;
-        }
-
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 1px;
-            background-color: var(--border-color);
-            border: 1px solid var(--border-color);
-            border-radius: 5px;
-            overflow: hidden;
-        }
-
-        .calendar-weekday {
-            background-color: var(--header-bg);
-            text-align: center;
-            padding: 10px 5px;
-            font-weight: bold;
-        }
-
-        .calendar-day {
-            background-color: var(--day-bg);
-            min-height: 120px;
-            padding: 8px;
-            position: relative;
-            transition: background-color 0.2s;
-            display: flex;
-            flex-direction: column;
-        }
-        
-        .calendar-day:hover {
-            background-color: var(--day-hover-bg);
-        }
-
-        .day-number {
-            font-weight: bold;
-            font-size: 12px;
-            margin-bottom: 5px;
-            text-align: right;
-        }
-        
-        .calendar-day.other-month .day-number {
-            color: var(--other-month-color);
-        }
-
-        .calendar-day.today .day-number {
-            background-color: var(--today-border);
-            color: white;
-            border-radius: 50%;
-            width: 22px;
-            height: 22px;
-            display: inline-flex;
-            justify-content: center;
-            align-items: center;
-            float: right;
-        }
-        
-        .events-list {
-            flex-grow: 1;
-            overflow-y: auto;
-            font-size: 11px;
-        }
-        
-        .event-item, .holiday-item {
-            padding: 4px;
-            margin-bottom: 3px;
-            border-radius: 3px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            cursor: default;
-        }
-        
-        .holiday-item {
-            background-color: var(--holiday-bg);
-            border-left: 3px solid var(--event-color-1);
-        }
-        
+        #convert-btn:hover { background-color: #0056b3; }
+        #error-message { color: var(--event-color-3); text-align: center; display: none; }
+        #calendar-container { margin-top: 20px; }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .calendar-header h2 { margin: 0; font-size: 24px; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: var(--border-color); border: 1px solid var(--border-color); border-radius: 5px; overflow: hidden; }
+        .calendar-weekday { background-color: var(--header-bg); text-align: center; padding: 10px 5px; font-weight: bold; }
+        .calendar-day { background-color: var(--day-bg); min-height: 120px; padding: 8px; position: relative; transition: background-color 0.2s; display: flex; flex-direction: column; }
+        .calendar-day:hover { background-color: var(--day-hover-bg); }
+        .day-number { font-weight: bold; font-size: 12px; margin-bottom: 5px; text-align: right; }
+        .calendar-day.other-month .day-number { color: var(--other-month-color); }
+        .calendar-day.today .day-number { background-color: var(--today-border); color: white; border-radius: 50%; width: 22px; height: 22px; display: inline-flex; justify-content: center; align-items: center; float: right; }
+        .events-list { flex-grow: 1; overflow-y: auto; font-size: 11px; }
+        .event-item, .holiday-item { padding: 4px; margin-bottom: 3px; border-radius: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: default; }
+        .holiday-item { background-color: var(--holiday-bg); border-left: 3px solid var(--event-color-1); }
         .event-item.imp-1 { border-left: 3px solid var(--event-color-1); }
         .event-item.imp-2 { border-left: 3px solid var(--event-color-2); }
         .event-item.imp-3 { border-left: 3px solid var(--event-color-3); }
-
-        .event-time {
-            display: inline-block;
-            width: 40px;
-            margin-right: 5px;
-            color: var(--time-text-color);
-            font-weight: 500;
-        }
-
-        .event-currency {
-            font-weight: bold;
-            display: inline-block;
-            margin-right: 5px;
-            min-width: 30px;
-        }
-
+        .event-time { display: inline-block; width: 40px; margin-right: 5px; color: var(--time-text-color); font-weight: 500; }
+        .event-currency { font-weight: bold; display: inline-block; margin-right: 5px; min-width: 30px; }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <!-- --- MODIFICATION START: New header structure and toggle button --- -->
         <div class="main-header">
             <h1>Financial Calendar Converter</h1>
-            <button id="toggle-input-btn">Hide Form</button>
+            <button id="toggle-setup-btn">Hide Setup</button>
         </div>
-        <p id="input-instructions">Please copy the HTML source code of the economic calendar from a site like Bloomberg or Investing.com, paste it into the text box below, and then click convert.</p>
-        <!-- --- MODIFICATION END --- -->
 
-        <div class="input-section">
-            <label for="html-input">Paste HTML source code here:</label>
-            <textarea id="html-input" rows="12" placeholder="For example: <section pagestartat=..."></textarea>
-            <div id="error-message"></div>
-            <button id="convert-btn">Convert Calendar</button>
+        <div id="setup-section">
+            <div class="instructions">
+                <h3>How to Use</h3>
+                <ol>
+                    <li>
+                        <strong>Open the Economic Calendar in a new tab:</strong> 
+                        <a href="https://econcal.forexprostools.com/?features=datepicker,timezone,country_importance,filters&calType=week" target="_blank" rel="noopener noreferrer">Click here to open the calendar</a>.
+                    </li>
+                    <li>In that new tab, select your desired date range and filters.</li>
+                    <li>Right-click anywhere on that page and select "<strong>View Page Source</strong>".</li>
+                    <li>A new tab will open with the HTML code. Press <strong>Ctrl+A</strong> (or Cmd+A) to select all, then <strong>Ctrl+C</strong> (or Cmd+C) to copy.</li>
+                    <li>Return to this page and paste the code (Ctrl+V or Cmd+V) into the text box below.</li>
+                    <li>Click the "Convert Calendar" button.</li>
+                </ol>
+            </div>
+
+            <div class="input-area">
+                <label for="html-input"><strong>Step 5:</strong> Paste HTML source code here:</label>
+                <textarea id="html-input" rows="10" placeholder="Paste the full page source code here..."></textarea>
+                <div id="error-message"></div>
+                <button id="convert-btn"><strong>Step 6:</strong> Convert Calendar</button>
+            </div>
         </div>
+
         <div id="calendar-container"></div>
     </div>
 
     <script>
-        // --- MODIFICATION START: Logic for the new toggle button ---
         document.addEventListener('DOMContentLoaded', () => {
-            const toggleBtn = document.getElementById('toggle-input-btn');
-            const inputSection = document.querySelector('.input-section');
-            const instructions = document.getElementById('input-instructions');
+            const toggleBtn = document.getElementById('toggle-setup-btn');
+            const setupSection = document.getElementById('setup-section');
+            const convertBtn = document.getElementById('convert-btn');
 
             toggleBtn.addEventListener('click', () => {
-                // Toggle the 'hidden' class on the elements
-                inputSection.classList.toggle('hidden');
-                instructions.classList.toggle('hidden');
+                setupSection.classList.toggle('hidden');
+                toggleBtn.textContent = setupSection.classList.contains('hidden') ? 'Show Setup' : 'Hide Setup';
+            });
 
-                // Update the button text based on visibility
-                if (inputSection.classList.contains('hidden')) {
-                    toggleBtn.textContent = 'Show Form';
-                } else {
-                    toggleBtn.textContent = 'Hide Form';
+            convertBtn.addEventListener('click', () => {
+                if (processConversion()) {
+                    setupSection.classList.add('hidden');
+                    toggleBtn.textContent = 'Show Setup';
                 }
             });
         });
-        // --- MODIFICATION END ---
 
-        document.getElementById('convert-btn').addEventListener('click', () => {
+        function processConversion() {
             const htmlInput = document.getElementById('html-input').value;
             const calendarContainer = document.getElementById('calendar-container');
             const errorMessage = document.getElementById('error-message');
@@ -283,32 +208,34 @@
             errorMessage.style.display = 'none';
 
             if (!htmlInput.trim()) {
-                showError("Input box cannot be empty. Please paste the HTML source code.");
-                return;
+                showError("Input box cannot be empty. Please follow the steps to copy and paste the page's source code.");
+                return false;
             }
 
             try {
                 const parsedData = parseCalendarHtml(htmlInput);
                 if (Object.keys(parsedData).length === 0) {
-                    showError("Could not parse any valid data from the provided HTML. Please check if the source code is complete and correctly formatted.");
-                    return;
+                    showError("Could not parse any valid data. Please ensure you copied the entire page source from '<strong>View Page Source</strong>'.");
+                    return false;
                 }
                 renderCalendar(parsedData);
+                return true;
             } catch (error) {
                 console.error("Error during parsing or rendering:", error);
                 showError(`Processing failed: ${error.message}. Please check the console for more information.`);
+                return false;
             }
-        });
+        }
         
         function showError(message) {
             const errorMessage = document.getElementById('error-message');
-            errorMessage.textContent = message;
+            errorMessage.innerHTML = message;
             errorMessage.style.display = 'block';
         }
 
         function parseCalendarHtml(htmlString) {
             const parser = new DOMParser();
-            const doc = parser.parseFromString(`<div>${htmlString}</div>`, 'text/html');
+            const doc = parser.parseFromString(htmlString, 'text/html');
             const daySections = doc.querySelectorAll('section.day-section');
             const calendarData = {};
 
@@ -318,6 +245,8 @@
 
                 const dateStr = dateHeader.textContent.trim();
                 const date = new Date(dateStr);
+                 if (isNaN(date)) return;
+
                 const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
                 
                 if (!calendarData[dateKey]) {
@@ -364,8 +293,11 @@
             const calendarContainer = document.getElementById('calendar-container');
             calendarContainer.innerHTML = '';
             
-            const firstDateKey = Object.keys(data)[0];
-            const sampleDate = new Date(firstDateKey);
+            const sortedKeys = Object.keys(data).sort();
+            if (sortedKeys.length === 0) return;
+
+            const firstDateKey = sortedKeys[0];
+            const sampleDate = new Date(firstDateKey.replace(/-/g, '/'));
             
             const year = sampleDate.getFullYear();
             const month = sampleDate.getMonth();
@@ -384,13 +316,8 @@
                 <div class="calendar-grid">
             `;
             
-            dayNames.forEach(day => {
-                html += `<div class="calendar-weekday">${day}</div>`;
-            });
-
-            for (let i = 0; i < startDayOfWeek; i++) {
-                html += `<div class="calendar-day other-month"></div>`;
-            }
+            dayNames.forEach(day => { html += `<div class="calendar-weekday">${day}</div>`; });
+            for (let i = 0; i < startDayOfWeek; i++) { html += `<div class="calendar-day other-month"></div>`; }
 
             for (let day = 1; day <= daysInMonth; day++) {
                 const currentDate = new Date(year, month, day);
@@ -406,6 +333,7 @@
                 
                 const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 if (data[dateKey]) {
+                    data[dateKey].sort((a, b) => (a.time || '23:59').localeCompare(b.time || '23:59'));
                     data[dateKey].forEach(event => {
                         const title = event.type === 'holiday' 
                             ? `${event.country} - ${event.eventName}`
@@ -424,20 +352,16 @@
                         }
                     });
                 }
-                
                 html += `</div></div>`;
             }
             
             const totalCells = startDayOfWeek + daysInMonth;
             const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
-            for(let i=0; i<remainingCells; i++) {
-                html += `<div class="calendar-day other-month"></div>`;
-            }
+            for(let i=0; i<remainingCells; i++) { html += `<div class="calendar-day other-month"></div>`; }
 
             html += `</div>`;
             calendarContainer.innerHTML = html;
         }
-
     </script>
 </body>
 </html>
