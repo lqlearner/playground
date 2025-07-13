@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Financial Calendar Converter</title>
+    
+    <!-- --- MODIFICATION START: Include the SheetJS library for Excel export --- -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- --- MODIFICATION END --- -->
+
     <style>
         :root {
             --bg-color: #f8f9fa;
@@ -22,6 +27,7 @@
             --secondary-btn-bg: #6c757d;
             --instructions-bg: #eef7ff;
             --link-color: #0056b3;
+            --export-btn-bg: #198754;
         }
 
         body {
@@ -51,14 +57,10 @@
             gap: 10px;
         }
         
-        .main-header h1 {
-            margin: 0;
-            color: var(--main-text-color);
-        }
+        .main-header h1 { margin: 0; color: var(--main-text-color); }
 
-        #toggle-setup-btn {
+        .btn {
             padding: 8px 16px;
-            background-color: var(--secondary-btn-bg);
             color: white;
             border: none;
             border-radius: 5px;
@@ -69,9 +71,8 @@
             white-space: nowrap;
         }
 
-        #toggle-setup-btn:hover {
-            background-color: #5a6268;
-        }
+        #toggle-setup-btn { background-color: var(--secondary-btn-bg); }
+        #toggle-setup-btn:hover { background-color: #5a6268; }
         
         #setup-section {
             border: 1px dashed var(--border-color);
@@ -90,74 +91,33 @@
         .instructions h3 { margin-top: 0; }
         .instructions ol { padding-left: 20px; margin-bottom: 0; }
         .instructions li { margin-bottom: 10px; line-height: 1.5; }
-        .instructions a {
-            color: var(--link-color);
-            font-weight: bold;
-            text-decoration: none;
-        }
-        .instructions a:hover {
-            text-decoration: underline;
-        }
+        .instructions a { color: var(--link-color); font-weight: bold; text-decoration: none; }
+        .instructions a:hover { text-decoration: underline; }
         
         .input-area { display: flex; flex-direction: column; gap: 15px; }
         .hidden { display: none; }
 
-        #html-input {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 10px;
-            border: 1px solid var(--border-color);
-            border-radius: 5px;
-            font-family: Consolas, "Courier New", monospace;
-            font-size: 12px;
-            resize: vertical;
-        }
+        #html-input { width: 100%; box-sizing: border-box; padding: 10px; border: 1px solid var(--border-color); border-radius: 5px; font-family: Consolas, "Courier New", monospace; font-size: 12px; resize: vertical; }
 
-        #convert-btn {
-            padding: 12px 20px;
-            background-color: var(--today-border);
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            transition: background-color 0.2s ease;
-        }
+        #convert-btn { padding: 12px 20px; background-color: var(--today-border); color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; transition: background-color 0.2s ease; }
         #convert-btn:hover { background-color: #0056b3; }
         #error-message { color: var(--event-color-3); text-align: center; display: none; }
         #calendar-container { margin-top: 20px; }
         .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px; }
         .calendar-header h2 { margin: 0; font-size: 24px; }
         
-        .filter-controls {
-            display: flex;
-            gap: 20px;
-            align-items: center;
-        }
-        .filter-controls label {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            cursor: pointer;
-            font-size: 13px;
-        }
-        .filter-controls input {
-            cursor: pointer;
-            accent-color: var(--today-border);
-        }
-        .filter-controls .imp-1-label::before,
-        .filter-controls .imp-2-label::before,
-        .filter-controls .imp-3-label::before {
-            content: '';
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-        }
+        .calendar-actions { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+
+        .filter-controls { display: flex; gap: 20px; align-items: center; }
+        .filter-controls label { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 13px; }
+        .filter-controls input { cursor: pointer; accent-color: var(--today-border); }
+        .filter-controls .imp-1-label::before, .filter-controls .imp-2-label::before, .filter-controls .imp-3-label::before { content: ''; display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
         .filter-controls .imp-1-label::before { background-color: var(--event-color-1); }
         .filter-controls .imp-2-label::before { background-color: var(--event-color-2); }
         .filter-controls .imp-3-label::before { background-color: var(--event-color-3); }
+
+        #export-btn { background-color: var(--export-btn-bg); }
+        #export-btn:hover { background-color: #157347; }
         
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: var(--border-color); border: 1px solid var(--border-color); border-radius: 5px; overflow: hidden; }
         .calendar-weekday { background-color: var(--header-bg); text-align: center; padding: 10px 5px; font-weight: bold; }
@@ -181,19 +141,19 @@
     <div class="container">
         <div class="main-header">
             <h1>Financial Calendar Converter</h1>
-            <button id="toggle-setup-btn">Hide Setup</button>
+            <button id="toggle-setup-btn" class="btn">Hide Setup</button>
         </div>
 
         <div id="setup-section">
             <div class="instructions">
                 <h3>How to Use</h3>
                 <ol>
-                    <li><strong>Open the Economic Calendar in a new tab:</strong> <a href="https://econcal.forexprostools.com/?features=datepicker,timezone,country_importance,filters&calType=week" target="_blank" rel="noopener noreferrer">Click here to open the calendar</a>.</li>
-                    <li>In that new tab, select your desired date range and filters.</li>
-                    <li>Right-click anywhere on that page and select "<strong>View Page Source</strong>".</li>
-                    <li>A new tab will open with the HTML code. Press <strong>Ctrl+A</strong> (or Cmd+A) to select all, then <strong>Ctrl+C</strong> (or Cmd+C) to copy.</li>
-                    <li>Return to this page and paste the code (Ctrl+V or Cmd+V) into the text box below.</li>
-                    <li>Click the "Convert Calendar" button.</li>
+                    <li><strong>Open the Economic Calendar:</strong> <a href="https://econcal.forexprostools.com/?features=datepicker,timezone,country_importance,filters&calType=week" target="_blank" rel="noopener noreferrer">Click here</a>.</li>
+                    <li>In the new tab, select your date range and filters.</li>
+                    <li>Right-click the page and select "<strong>View Page Source</strong>".</li>
+                    <li>Copy all the source code (Ctrl+A, then Ctrl+C).</li>
+                    <li>Return here and paste it into the text box below.</li>
+                    <li>Click "Convert Calendar".</li>
                 </ol>
             </div>
             <div class="input-area">
@@ -227,16 +187,19 @@
                 }
             });
             
-            // --- FIX START: Use Event Delegation ---
-            // Listen for changes on the parent container. This will catch changes from checkboxes
-            // even if they are added to the DOM later.
             calendarContainer.addEventListener('change', (event) => {
-                // Check if the element that triggered the event is one of our filter checkboxes
-                if (event.target.matches('#filter-imp-1, #filter-imp-2, #filter-imp-3')) {
-                    applyFiltersAndRender();
+                if (event.target.matches('input[type="checkbox"]')) {
+                    renderCalendar(getFilteredData());
                 }
             });
-            // --- FIX END ---
+
+            // --- MODIFICATION START: Event delegation for the export button ---
+            calendarContainer.addEventListener('click', (event) => {
+                if (event.target.id === 'export-btn') {
+                    exportToXlsx();
+                }
+            });
+            // --- MODIFICATION END ---
         });
 
         function processConversion() {
@@ -248,26 +211,22 @@
             errorMessage.style.display = 'none';
 
             if (!htmlInput.trim()) {
-                showError("Input box cannot be empty. Please follow the steps to copy and paste the page's source code.");
+                showError("Input box cannot be empty.");
                 return false;
             }
 
             try {
                 const parsedData = parseCalendarHtml(htmlInput);
                 if (Object.keys(parsedData).length === 0) {
-                    showError("Could not parse any valid data. Please ensure you copied the entire page source from '<strong>View Page Source</strong>'.");
+                    showError("Could not parse any valid data. Check the source code.");
                     return false;
                 }
-                
                 fullCalendarData = parsedData;
-                
-                // --- FIX: The initial render uses the full data. The checkboxes will be created
-                // with the `checked` attribute directly in the HTML string by renderCalendar.
-                renderCalendar(fullCalendarData); 
+                renderCalendar(getFilteredData());
                 return true;
             } catch (error) {
-                console.error("Error during parsing or rendering:", error);
-                showError(`Processing failed: ${error.message}. Please check the console for more information.`);
+                console.error("Error during processing:", error);
+                showError(`Processing failed: ${error.message}.`);
                 return false;
             }
         }
@@ -278,31 +237,62 @@
             errorMessage.style.display = 'block';
         }
 
-        function applyFiltersAndRender() {
-            if (Object.keys(fullCalendarData).length === 0) return;
+        function getFilteredData() {
+            if (Object.keys(fullCalendarData).length === 0) return {};
 
-            // --- FIX: Read the state of checkboxes directly from the DOM each time.
-            // Use optional chaining (?.) as a safety measure.
             const selectedImportances = [];
-            if (document.getElementById('filter-imp-1')?.checked) selectedImportances.push('1');
-            if (document.getElementById('filter-imp-2')?.checked) selectedImportances.push('2');
-            if (document.getElementById('filter-imp-3')?.checked) selectedImportances.push('3');
+            if (document.getElementById('filter-imp-1')?.checked ?? true) selectedImportances.push('1');
+            if (document.getElementById('filter-imp-2')?.checked ?? true) selectedImportances.push('2');
+            if (document.getElementById('filter-imp-3')?.checked ?? true) selectedImportances.push('3');
 
             const filteredData = {};
             for (const dateKey in fullCalendarData) {
                 const dayEvents = fullCalendarData[dateKey].filter(event => {
                     return event.type === 'holiday' || selectedImportances.includes(String(event.importance));
                 });
-
                 if (dayEvents.length > 0) {
                     filteredData[dateKey] = dayEvents;
                 }
             }
-            // --- FIX: Pass the newly filtered data to renderCalendar.
-            renderCalendar(filteredData);
+            return filteredData;
         }
 
+        // --- MODIFICATION START: New function to handle Excel export ---
+        function exportToXlsx() {
+            const dataToExport = [['Date', 'Time', 'Importance', 'Currency', 'Country', 'Event Name', 'Actual', 'Forecast', 'Previous']];
+            const filteredData = getFilteredData();
+            
+            const importanceMap = { 1: 'Low (*)', 2: 'Medium (**)', 3: 'High (***)' };
+
+            Object.keys(filteredData).sort().forEach(dateKey => {
+                filteredData[dateKey].forEach(event => {
+                    if (event.type === 'holiday') {
+                        dataToExport.push([dateKey, event.time, 'N/A', 'N/A', event.country, event.eventName, 'N/A', 'N/A', 'N/A']);
+                    } else {
+                        dataToExport.push([
+                            dateKey,
+                            event.time,
+                            importanceMap[event.importance] || 'N/A',
+                            event.currency,
+                            event.country,
+                            event.eventName,
+                            event.actual,
+                            event.forecast,
+                            event.previous
+                        ]);
+                    }
+                });
+            });
+
+            const worksheet = XLSX.utils.aoa_to_sheet(dataToExport);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, 'EconomicCalendar');
+            XLSX.writeFile(workbook, 'Economic_Calendar.xlsx');
+        }
+        // --- MODIFICATION END ---
+
         function parseCalendarHtml(htmlString) {
+            // ... (This function remains unchanged)
             const parser = new DOMParser();
             const doc = parser.parseFromString(htmlString, 'text/html');
             const daySections = doc.querySelectorAll('section.day-section');
@@ -315,7 +305,6 @@
                  if (isNaN(date)) return;
                 const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
                 if (!calendarData[dateKey]) calendarData[dateKey] = [];
-
                 daySection.querySelectorAll('li.item').forEach(item => {
                     const eventData = {};
                     if (item.classList.contains('holidayRow')) {
@@ -348,24 +337,16 @@
 
         function renderCalendar(data) {
             const calendarContainer = document.getElementById('calendar-container');
-            
-            // --- FIX: Preserve the checked state of filters before re-rendering ---
             const checkedStates = {
                 imp1: document.getElementById('filter-imp-1')?.checked ?? true,
                 imp2: document.getElementById('filter-imp-2')?.checked ?? true,
                 imp3: document.getElementById('filter-imp-3')?.checked ?? true,
             };
 
-            calendarContainer.innerHTML = ''; // Clear previous content
+            calendarContainer.innerHTML = ''; 
             
-            const firstDateKey = Object.keys(data).sort()[0];
-            if (!firstDateKey && Object.keys(fullCalendarData).length > 0) {
-                 // The full data exists, but the filtered data is empty.
-                 // We still need to render the header and filters to allow the user to change their selection.
-            } else if (!firstDateKey) {
-                // No data at all.
-                return;
-            }
+            const firstDateKey = Object.keys(data).sort()[0] || Object.keys(fullCalendarData).sort()[0];
+            if (!firstDateKey) return;
 
             const sampleDate = new Date(firstDateKey.replace(/-/g, '/'));
             const year = sampleDate.getFullYear();
@@ -376,18 +357,22 @@
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             const startDayOfWeek = firstDayOfMonth.getDay();
 
-            // --- FIX: Use the saved checkedStates to build the HTML string ---
+            // --- MODIFICATION START: Added export button to the header actions ---
             let html = `
                 <div class="calendar-header">
                     <h2>${monthNames[month]} ${year}</h2>
-                    <div class="filter-controls">
-                        <label class="imp-1-label"><input type="checkbox" id="filter-imp-1" value="1" ${checkedStates.imp1 ? 'checked' : ''}> Low</label>
-                        <label class="imp-2-label"><input type="checkbox" id="filter-imp-2" value="2" ${checkedStates.imp2 ? 'checked' : ''}> Medium</label>
-                        <label class="imp-3-label"><input type="checkbox" id="filter-imp-3" value="3" ${checkedStates.imp3 ? 'checked' : ''}> High</label>
+                    <div class="calendar-actions">
+                        <div class="filter-controls">
+                            <label class="imp-1-label"><input type="checkbox" id="filter-imp-1" value="1" ${checkedStates.imp1 ? 'checked' : ''}> Low</label>
+                            <label class="imp-2-label"><input type="checkbox" id="filter-imp-2" value="2" ${checkedStates.imp2 ? 'checked' : ''}> Medium</label>
+                            <label class="imp-3-label"><input type="checkbox" id="filter-imp-3" value="3" ${checkedStates.imp3 ? 'checked' : ''}> High</label>
+                        </div>
+                        <button id="export-btn" class="btn">Save as Excel</button>
                     </div>
                 </div>
                 <div class="calendar-grid">
             `;
+            // --- MODIFICATION END ---
             
             dayNames.forEach(day => { html += `<div class="calendar-weekday">${day}</div>`; });
             for (let i = 0; i < startDayOfWeek; i++) { html += `<div class="calendar-day other-month"></div>`; }
@@ -420,11 +405,11 @@
             const totalCells = startDayOfWeek + daysInMonth;
             const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
             for(let i=0; i<remainingCells; i++) { html += `<div class="calendar-day other-month"></div>`; }
-
+            
             html += `</div>`;
             
             if (Object.keys(data).length === 0 && Object.keys(fullCalendarData).length > 0) {
-                 html += `<p style="text-align:center; padding: 20px; grid-column: 1 / -1;">No events match the selected filters for this period.</p>`;
+                 html += `<p style="text-align:center; padding: 20px;">No events match the selected filters for this period.</p>`;
             }
             
             calendarContainer.innerHTML = html;
