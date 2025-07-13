@@ -18,6 +18,8 @@
             --event-color-1: #28a745; /* Low */
             --event-color-2: #ffc107; /* Medium */
             --event-color-3: #dc3545; /* High */
+            --time-text-color: #6c757d;
+            --secondary-btn-bg: #6c757d;
         }
 
         body {
@@ -38,9 +40,37 @@
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         }
 
-        h1 {
-            text-align: center;
+        /* --- MODIFICATION START: Header layout for new toggle button --- */
+        .main-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .main-header h1 {
+            margin: 0;
             color: var(--main-text-color);
+        }
+
+        #toggle-input-btn {
+            padding: 8px 16px;
+            background-color: var(--secondary-btn-bg);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.2s ease;
+        }
+
+        #toggle-input-btn:hover {
+            background-color: #5a6268;
+        }
+        /* --- MODIFICATION END --- */
+
+        #input-instructions {
             margin-bottom: 25px;
         }
 
@@ -50,6 +80,12 @@
             gap: 15px;
             margin-bottom: 30px;
         }
+
+        /* --- MODIFICATION START: Helper class for toggling visibility --- */
+        .hidden {
+            display: none;
+        }
+        /* --- MODIFICATION END --- */
 
         #html-input {
             width: 100%;
@@ -179,21 +215,14 @@
         .event-item.imp-2 { border-left: 3px solid var(--event-color-2); }
         .event-item.imp-3 { border-left: 3px solid var(--event-color-3); }
 
-        .event-importance {
+        .event-time {
             display: inline-block;
-            margin-right: 4px;
+            width: 40px;
+            margin-right: 5px;
+            color: var(--time-text-color);
+            font-weight: 500;
         }
-        .event-importance span {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            margin-right: 2px;
-        }
-        .imp-1 .event-importance span { background-color: var(--event-color-1); }
-        .imp-2 .event-importance span { background-color: var(--event-color-2); }
-        .imp-3 .event-importance span { background-color: var(--event-color-3); }
-        
+
         .event-currency {
             font-weight: bold;
             display: inline-block;
@@ -206,8 +235,14 @@
 <body>
 
     <div class="container">
-        <h1>Financial Calendar Converter</h1>
-        <p>Please copy the HTML source code of the economic calendar from a site like Bloomberg or Investing.com, paste it into the text box below, and then click convert.</p>
+        <!-- --- MODIFICATION START: New header structure and toggle button --- -->
+        <div class="main-header">
+            <h1>Financial Calendar Converter</h1>
+            <button id="toggle-input-btn">Hide Form</button>
+        </div>
+        <p id="input-instructions">Please copy the HTML source code of the economic calendar from a site like Bloomberg or Investing.com, paste it into the text box below, and then click convert.</p>
+        <!-- --- MODIFICATION END --- -->
+
         <div class="input-section">
             <label for="html-input">Paste HTML source code here:</label>
             <textarea id="html-input" rows="12" placeholder="For example: <section pagestartat=..."></textarea>
@@ -218,6 +253,27 @@
     </div>
 
     <script>
+        // --- MODIFICATION START: Logic for the new toggle button ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggleBtn = document.getElementById('toggle-input-btn');
+            const inputSection = document.querySelector('.input-section');
+            const instructions = document.getElementById('input-instructions');
+
+            toggleBtn.addEventListener('click', () => {
+                // Toggle the 'hidden' class on the elements
+                inputSection.classList.toggle('hidden');
+                instructions.classList.toggle('hidden');
+
+                // Update the button text based on visibility
+                if (inputSection.classList.contains('hidden')) {
+                    toggleBtn.textContent = 'Show Form';
+                } else {
+                    toggleBtn.textContent = 'Hide Form';
+                }
+            });
+        });
+        // --- MODIFICATION END ---
+
         document.getElementById('convert-btn').addEventListener('click', () => {
             const htmlInput = document.getElementById('html-input').value;
             const calendarContainer = document.getElementById('calendar-container');
@@ -252,7 +308,6 @@
 
         function parseCalendarHtml(htmlString) {
             const parser = new DOMParser();
-            // Wrap in a div to ensure the parser handles fragments correctly
             const doc = parser.parseFromString(`<div>${htmlString}</div>`, 'text/html');
             const daySections = doc.querySelectorAll('section.day-section');
             const calendarData = {};
@@ -263,7 +318,6 @@
 
                 const dateStr = dateHeader.textContent.trim();
                 const date = new Date(dateStr);
-                // Create a YYYY-MM-DD key to avoid timezone issues
                 const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
                 
                 if (!calendarData[dateKey]) {
@@ -330,17 +384,14 @@
                 <div class="calendar-grid">
             `;
             
-            // Weekday headers
             dayNames.forEach(day => {
                 html += `<div class="calendar-weekday">${day}</div>`;
             });
 
-            // Blank days before the 1st
             for (let i = 0; i < startDayOfWeek; i++) {
                 html += `<div class="calendar-day other-month"></div>`;
             }
 
-            // Days of the month
             for (let day = 1; day <= daysInMonth; day++) {
                 const currentDate = new Date(year, month, day);
                 const today = new Date();
@@ -366,6 +417,7 @@
                                      </div>`;
                         } else {
                             html += `<div class="event-item imp-${event.importance}" title="${title}">
+                                        <span class="event-time">${event.time}</span>
                                         <span class="event-currency">${event.currency}</span>
                                         <span>${event.eventName}</span>
                                      </div>`;
@@ -376,14 +428,13 @@
                 html += `</div></div>`;
             }
             
-            // Calculate remaining blank cells to complete the grid
             const totalCells = startDayOfWeek + daysInMonth;
             const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
             for(let i=0; i<remainingCells; i++) {
                 html += `<div class="calendar-day other-month"></div>`;
             }
 
-            html += `</div>`; // Close calendar-grid
+            html += `</div>`;
             calendarContainer.innerHTML = html;
         }
 
