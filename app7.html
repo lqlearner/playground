@@ -48,10 +48,11 @@
             align-items: center;
             margin-bottom: 20px;
             flex-wrap: wrap;
+            gap: 10px;
         }
         
         .main-header h1 {
-            margin: 0 20px 0 0;
+            margin: 0;
             color: var(--main-text-color);
         }
 
@@ -88,7 +89,7 @@
         }
         .instructions h3 { margin-top: 0; }
         .instructions ol { padding-left: 20px; margin-bottom: 0; }
-        .instructions li { margin-bottom: 10px; }
+        .instructions li { margin-bottom: 10px; line-height: 1.5; }
         .instructions a {
             color: var(--link-color);
             font-weight: bold;
@@ -126,8 +127,38 @@
         #convert-btn:hover { background-color: #0056b3; }
         #error-message { color: var(--event-color-3); text-align: center; display: none; }
         #calendar-container { margin-top: 20px; }
-        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 15px; }
         .calendar-header h2 { margin: 0; font-size: 24px; }
+        
+        .filter-controls {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+        }
+        .filter-controls label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .filter-controls input {
+            cursor: pointer;
+            accent-color: var(--today-border);
+        }
+        .filter-controls .imp-1-label::before,
+        .filter-controls .imp-2-label::before,
+        .filter-controls .imp-3-label::before {
+            content: '';
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        .filter-controls .imp-1-label::before { background-color: var(--event-color-1); }
+        .filter-controls .imp-2-label::before { background-color: var(--event-color-2); }
+        .filter-controls .imp-3-label::before { background-color: var(--event-color-3); }
+        
         .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; background-color: var(--border-color); border: 1px solid var(--border-color); border-radius: 5px; overflow: hidden; }
         .calendar-weekday { background-color: var(--header-bg); text-align: center; padding: 10px 5px; font-weight: bold; }
         .calendar-day { background-color: var(--day-bg); min-height: 120px; padding: 8px; position: relative; transition: background-color 0.2s; display: flex; flex-direction: column; }
@@ -157,10 +188,7 @@
             <div class="instructions">
                 <h3>How to Use</h3>
                 <ol>
-                    <li>
-                        <strong>Open the Economic Calendar in a new tab:</strong> 
-                        <a href="https://econcal.forexprostools.com/?features=datepicker,timezone,country_importance,filters&calType=week" target="_blank" rel="noopener noreferrer">Click here to open the calendar</a>.
-                    </li>
+                    <li><strong>Open the Economic Calendar in a new tab:</strong> <a href="https://econcal.forexprostools.com/?features=datepicker,timezone,country_importance,filters&calType=week" target="_blank" rel="noopener noreferrer">Click here to open the calendar</a>.</li>
                     <li>In that new tab, select your desired date range and filters.</li>
                     <li>Right-click anywhere on that page and select "<strong>View Page Source</strong>".</li>
                     <li>A new tab will open with the HTML code. Press <strong>Ctrl+A</strong> (or Cmd+A) to select all, then <strong>Ctrl+C</strong> (or Cmd+C) to copy.</li>
@@ -168,7 +196,6 @@
                     <li>Click the "Convert Calendar" button.</li>
                 </ol>
             </div>
-
             <div class="input-area">
                 <label for="html-input"><strong>Step 5:</strong> Paste HTML source code here:</label>
                 <textarea id="html-input" rows="10" placeholder="Paste the full page source code here..."></textarea>
@@ -176,15 +203,17 @@
                 <button id="convert-btn"><strong>Step 6:</strong> Convert Calendar</button>
             </div>
         </div>
-
         <div id="calendar-container"></div>
     </div>
 
     <script>
+        let fullCalendarData = {};
+
         document.addEventListener('DOMContentLoaded', () => {
             const toggleBtn = document.getElementById('toggle-setup-btn');
             const setupSection = document.getElementById('setup-section');
             const convertBtn = document.getElementById('convert-btn');
+            const calendarContainer = document.getElementById('calendar-container');
 
             toggleBtn.addEventListener('click', () => {
                 setupSection.classList.toggle('hidden');
@@ -197,6 +226,17 @@
                     toggleBtn.textContent = 'Show Setup';
                 }
             });
+            
+            // --- FIX START: Use Event Delegation ---
+            // Listen for changes on the parent container. This will catch changes from checkboxes
+            // even if they are added to the DOM later.
+            calendarContainer.addEventListener('change', (event) => {
+                // Check if the element that triggered the event is one of our filter checkboxes
+                if (event.target.matches('#filter-imp-1, #filter-imp-2, #filter-imp-3')) {
+                    applyFiltersAndRender();
+                }
+            });
+            // --- FIX END ---
         });
 
         function processConversion() {
@@ -218,7 +258,12 @@
                     showError("Could not parse any valid data. Please ensure you copied the entire page source from '<strong>View Page Source</strong>'.");
                     return false;
                 }
-                renderCalendar(parsedData);
+                
+                fullCalendarData = parsedData;
+                
+                // --- FIX: The initial render uses the full data. The checkboxes will be created
+                // with the `checked` attribute directly in the HTML string by renderCalendar.
+                renderCalendar(fullCalendarData); 
                 return true;
             } catch (error) {
                 console.error("Error during parsing or rendering:", error);
@@ -233,6 +278,30 @@
             errorMessage.style.display = 'block';
         }
 
+        function applyFiltersAndRender() {
+            if (Object.keys(fullCalendarData).length === 0) return;
+
+            // --- FIX: Read the state of checkboxes directly from the DOM each time.
+            // Use optional chaining (?.) as a safety measure.
+            const selectedImportances = [];
+            if (document.getElementById('filter-imp-1')?.checked) selectedImportances.push('1');
+            if (document.getElementById('filter-imp-2')?.checked) selectedImportances.push('2');
+            if (document.getElementById('filter-imp-3')?.checked) selectedImportances.push('3');
+
+            const filteredData = {};
+            for (const dateKey in fullCalendarData) {
+                const dayEvents = fullCalendarData[dateKey].filter(event => {
+                    return event.type === 'holiday' || selectedImportances.includes(String(event.importance));
+                });
+
+                if (dayEvents.length > 0) {
+                    filteredData[dateKey] = dayEvents;
+                }
+            }
+            // --- FIX: Pass the newly filtered data to renderCalendar.
+            renderCalendar(filteredData);
+        }
+
         function parseCalendarHtml(htmlString) {
             const parser = new DOMParser();
             const doc = parser.parseFromString(htmlString, 'text/html');
@@ -242,39 +311,28 @@
             daySections.forEach(daySection => {
                 const dateHeader = daySection.querySelector('h2.theDay');
                 if (!dateHeader) return;
-
-                const dateStr = dateHeader.textContent.trim();
-                const date = new Date(dateStr);
+                const date = new Date(dateHeader.textContent.trim());
                  if (isNaN(date)) return;
-
                 const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-                
-                if (!calendarData[dateKey]) {
-                    calendarData[dateKey] = [];
-                }
+                if (!calendarData[dateKey]) calendarData[dateKey] = [];
 
-                const items = daySection.querySelectorAll('li.item');
-                items.forEach(item => {
+                daySection.querySelectorAll('li.item').forEach(item => {
                     const eventData = {};
-                    
                     if (item.classList.contains('holidayRow')) {
                         eventData.type = 'holiday';
                         eventData.time = item.querySelector('.time')?.textContent.trim() || 'All Day';
                         eventData.country = item.querySelector('.flagCur span')?.title || '';
                         eventData.eventName = item.querySelector('.event')?.textContent.trim() || 'Unknown Holiday';
                         calendarData[dateKey].push(eventData);
-
                     } else {
                         const eventButton = item.querySelector('button.article.calLine');
                         if (!eventButton) return;
-
                         eventData.type = 'event';
                         eventData.time = eventButton.querySelector('time')?.textContent.trim() || '';
                         eventData.country = eventButton.querySelector('.flagCur span')?.title || '';
                         eventData.currency = eventButton.querySelector('.flagCur i')?.textContent.trim() || '';
                         eventData.importance = eventButton.querySelectorAll('.sentiment .grayFullBullishIcon').length || 1;
                         eventData.eventName = eventButton.querySelector('.event')?.textContent.trim().replace(/&/g, '&') || '';
-                        
                         const infoCont = eventButton.querySelector('.infoCont');
                         if (infoCont) {
                             eventData.actual = infoCont.querySelector('.act')?.textContent.replace(/Act:|Cons:|Prev:/gi, '').trim() || 'N/A';
@@ -285,33 +343,48 @@
                     }
                 });
             });
-
             return calendarData;
         }
 
         function renderCalendar(data) {
             const calendarContainer = document.getElementById('calendar-container');
-            calendarContainer.innerHTML = '';
             
-            const sortedKeys = Object.keys(data).sort();
-            if (sortedKeys.length === 0) return;
+            // --- FIX: Preserve the checked state of filters before re-rendering ---
+            const checkedStates = {
+                imp1: document.getElementById('filter-imp-1')?.checked ?? true,
+                imp2: document.getElementById('filter-imp-2')?.checked ?? true,
+                imp3: document.getElementById('filter-imp-3')?.checked ?? true,
+            };
 
-            const firstDateKey = sortedKeys[0];
-            const sampleDate = new Date(firstDateKey.replace(/-/g, '/'));
+            calendarContainer.innerHTML = ''; // Clear previous content
             
+            const firstDateKey = Object.keys(data).sort()[0];
+            if (!firstDateKey && Object.keys(fullCalendarData).length > 0) {
+                 // The full data exists, but the filtered data is empty.
+                 // We still need to render the header and filters to allow the user to change their selection.
+            } else if (!firstDateKey) {
+                // No data at all.
+                return;
+            }
+
+            const sampleDate = new Date(firstDateKey.replace(/-/g, '/'));
             const year = sampleDate.getFullYear();
             const month = sampleDate.getMonth();
-
             const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
             const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
             const firstDayOfMonth = new Date(year, month, 1);
             const daysInMonth = new Date(year, month + 1, 0).getDate();
             const startDayOfWeek = firstDayOfMonth.getDay();
 
+            // --- FIX: Use the saved checkedStates to build the HTML string ---
             let html = `
                 <div class="calendar-header">
                     <h2>${monthNames[month]} ${year}</h2>
+                    <div class="filter-controls">
+                        <label class="imp-1-label"><input type="checkbox" id="filter-imp-1" value="1" ${checkedStates.imp1 ? 'checked' : ''}> Low</label>
+                        <label class="imp-2-label"><input type="checkbox" id="filter-imp-2" value="2" ${checkedStates.imp2 ? 'checked' : ''}> Medium</label>
+                        <label class="imp-3-label"><input type="checkbox" id="filter-imp-3" value="3" ${checkedStates.imp3 ? 'checked' : ''}> High</label>
+                    </div>
                 </div>
                 <div class="calendar-grid">
             `;
@@ -323,13 +396,9 @@
                 const currentDate = new Date(year, month, day);
                 const today = new Date();
                 let dayClasses = 'calendar-day';
-                if (currentDate.toDateString() === today.toDateString()) {
-                    dayClasses += ' today';
-                }
+                if (currentDate.toDateString() === today.toDateString()) { dayClasses += ' today'; }
                 
-                html += `<div class="${dayClasses}">`;
-                html += `<div class="day-number">${day}</div>`;
-                html += `<div class="events-list">`;
+                html += `<div class="${dayClasses}"><div class="day-number">${day}</div><div class="events-list">`;
                 
                 const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 if (data[dateKey]) {
@@ -338,17 +407,10 @@
                         const title = event.type === 'holiday' 
                             ? `${event.country} - ${event.eventName}`
                             : `Event: ${event.eventName}\nTime: ${event.time}\nCountry: ${event.country}\nImportance: ${event.importance} Star(s)\nActual: ${event.actual}\nForecast: ${event.forecast}\nPrevious: ${event.previous}`;
-
                         if (event.type === 'holiday') {
-                            html += `<div class="holiday-item" title="${title}">
-                                        <span>${event.country ? event.country.substring(0,3).toUpperCase() : ''} Holiday</span>
-                                     </div>`;
+                            html += `<div class="holiday-item" title="${title}"><span>${event.country ? event.country.substring(0,3).toUpperCase() : ''} Holiday</span></div>`;
                         } else {
-                            html += `<div class="event-item imp-${event.importance}" title="${title}">
-                                        <span class="event-time">${event.time}</span>
-                                        <span class="event-currency">${event.currency}</span>
-                                        <span>${event.eventName}</span>
-                                     </div>`;
+                            html += `<div class="event-item imp-${event.importance}" title="${title}"><span class="event-time">${event.time}</span><span class="event-currency">${event.currency}</span><span>${event.eventName}</span></div>`;
                         }
                     });
                 }
@@ -360,6 +422,11 @@
             for(let i=0; i<remainingCells; i++) { html += `<div class="calendar-day other-month"></div>`; }
 
             html += `</div>`;
+            
+            if (Object.keys(data).length === 0 && Object.keys(fullCalendarData).length > 0) {
+                 html += `<p style="text-align:center; padding: 20px; grid-column: 1 / -1;">No events match the selected filters for this period.</p>`;
+            }
+            
             calendarContainer.innerHTML = html;
         }
     </script>
