@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Financial Calendar Converter</title>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --main-text-color: #343a40;
+            --border-color: #dee2e6;
+            --header-bg: #e9ecef;
+            --day-bg: #ffffff;
+            --day-hover-bg: #f1f3f5;
+            --other-month-color: #ced4da;
+            --today-border: #007bff;
+            --holiday-bg: #fff0f6;
+            --event-color-1: #28a745; /* Low */
+            --event-color-2: #ffc107; /* Medium */
+            --event-color-3: #dc3545; /* High */
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--main-text-color);
+            margin: 0;
+            padding: 20px;
+            font-size: 14px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        h1 {
+            text-align: center;
+            color: var(--main-text-color);
+            margin-bottom: 25px;
+        }
+
+        .input-section {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        #html-input {
+            width: 100%;
+            box-sizing: border-box;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            font-family: Consolas, "Courier New", monospace;
+            font-size: 12px;
+            resize: vertical;
+        }
+
+        #convert-btn {
+            padding: 12px 20px;
+            background-color: var(--today-border);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: background-color 0.2s ease;
+        }
+
+        #convert-btn:hover {
+            background-color: #0056b3;
+        }
+        
+        #error-message {
+            color: var(--event-color-3);
+            text-align: center;
+            display: none;
+        }
+
+        #calendar-container {
+            margin-top: 20px;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .calendar-header h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background-color: var(--border-color);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .calendar-weekday {
+            background-color: var(--header-bg);
+            text-align: center;
+            padding: 10px 5px;
+            font-weight: bold;
+        }
+
+        .calendar-day {
+            background-color: var(--day-bg);
+            min-height: 120px;
+            padding: 8px;
+            position: relative;
+            transition: background-color 0.2s;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .calendar-day:hover {
+            background-color: var(--day-hover-bg);
+        }
+
+        .day-number {
+            font-weight: bold;
+            font-size: 12px;
+            margin-bottom: 5px;
+            text-align: right;
+        }
+        
+        .calendar-day.other-month .day-number {
+            color: var(--other-month-color);
+        }
+
+        .calendar-day.today .day-number {
+            background-color: var(--today-border);
+            color: white;
+            border-radius: 50%;
+            width: 22px;
+            height: 22px;
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            float: right;
+        }
+        
+        .events-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            font-size: 11px;
+        }
+        
+        .event-item, .holiday-item {
+            padding: 4px;
+            margin-bottom: 3px;
+            border-radius: 3px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            cursor: default;
+        }
+        
+        .holiday-item {
+            background-color: var(--holiday-bg);
+            border-left: 3px solid var(--event-color-1);
+        }
+        
+        .event-item.imp-1 { border-left: 3px solid var(--event-color-1); }
+        .event-item.imp-2 { border-left: 3px solid var(--event-color-2); }
+        .event-item.imp-3 { border-left: 3px solid var(--event-color-3); }
+
+        .event-importance {
+            display: inline-block;
+            margin-right: 4px;
+        }
+        .event-importance span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 2px;
+        }
+        .imp-1 .event-importance span { background-color: var(--event-color-1); }
+        .imp-2 .event-importance span { background-color: var(--event-color-2); }
+        .imp-3 .event-importance span { background-color: var(--event-color-3); }
+        
+        .event-currency {
+            font-weight: bold;
+            display: inline-block;
+            margin-right: 5px;
+            min-width: 30px;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Financial Calendar Converter</h1>
+        <p>Please copy the HTML source code of the economic calendar from a site like Bloomberg or Investing.com, paste it into the text box below, and then click convert.</p>
+        <div class="input-section">
+            <label for="html-input">Paste HTML source code here:</label>
+            <textarea id="html-input" rows="12" placeholder="For example: <section pagestartat=..."></textarea>
+            <div id="error-message"></div>
+            <button id="convert-btn">Convert Calendar</button>
+        </div>
+        <div id="calendar-container"></div>
+    </div>
+
+    <script>
+        document.getElementById('convert-btn').addEventListener('click', () => {
+            const htmlInput = document.getElementById('html-input').value;
+            const calendarContainer = document.getElementById('calendar-container');
+            const errorMessage = document.getElementById('error-message');
+            
+            calendarContainer.innerHTML = '';
+            errorMessage.style.display = 'none';
+
+            if (!htmlInput.trim()) {
+                showError("Input box cannot be empty. Please paste the HTML source code.");
+                return;
+            }
+
+            try {
+                const parsedData = parseCalendarHtml(htmlInput);
+                if (Object.keys(parsedData).length === 0) {
+                    showError("Could not parse any valid data from the provided HTML. Please check if the source code is complete and correctly formatted.");
+                    return;
+                }
+                renderCalendar(parsedData);
+            } catch (error) {
+                console.error("Error during parsing or rendering:", error);
+                showError(`Processing failed: ${error.message}. Please check the console for more information.`);
+            }
+        });
+        
+        function showError(message) {
+            const errorMessage = document.getElementById('error-message');
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+
+        function parseCalendarHtml(htmlString) {
+            const parser = new DOMParser();
+            // Wrap in a div to ensure the parser handles fragments correctly
+            const doc = parser.parseFromString(`<div>${htmlString}</div>`, 'text/html');
+            const daySections = doc.querySelectorAll('section.day-section');
+            const calendarData = {};
+
+            daySections.forEach(daySection => {
+                const dateHeader = daySection.querySelector('h2.theDay');
+                if (!dateHeader) return;
+
+                const dateStr = dateHeader.textContent.trim();
+                const date = new Date(dateStr);
+                // Create a YYYY-MM-DD key to avoid timezone issues
+                const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+                
+                if (!calendarData[dateKey]) {
+                    calendarData[dateKey] = [];
+                }
+
+                const items = daySection.querySelectorAll('li.item');
+                items.forEach(item => {
+                    const eventData = {};
+                    
+                    if (item.classList.contains('holidayRow')) {
+                        eventData.type = 'holiday';
+                        eventData.time = item.querySelector('.time')?.textContent.trim() || 'All Day';
+                        eventData.country = item.querySelector('.flagCur span')?.title || '';
+                        eventData.eventName = item.querySelector('.event')?.textContent.trim() || 'Unknown Holiday';
+                        calendarData[dateKey].push(eventData);
+
+                    } else {
+                        const eventButton = item.querySelector('button.article.calLine');
+                        if (!eventButton) return;
+
+                        eventData.type = 'event';
+                        eventData.time = eventButton.querySelector('time')?.textContent.trim() || '';
+                        eventData.country = eventButton.querySelector('.flagCur span')?.title || '';
+                        eventData.currency = eventButton.querySelector('.flagCur i')?.textContent.trim() || '';
+                        eventData.importance = eventButton.querySelectorAll('.sentiment .grayFullBullishIcon').length || 1;
+                        eventData.eventName = eventButton.querySelector('.event')?.textContent.trim().replace(/&/g, '&') || '';
+                        
+                        const infoCont = eventButton.querySelector('.infoCont');
+                        if (infoCont) {
+                            eventData.actual = infoCont.querySelector('.act')?.textContent.replace(/Act:|Cons:|Prev:/gi, '').trim() || 'N/A';
+                            eventData.forecast = infoCont.querySelector('.fore')?.textContent.replace(/Act:|Cons:|Prev:/gi, '').trim() || 'N/A';
+                            eventData.previous = infoCont.querySelector('.prev')?.textContent.replace(/Act:|Cons:|Prev:/gi, '').trim() || 'N/A';
+                        }
+                        calendarData[dateKey].push(eventData);
+                    }
+                });
+            });
+
+            return calendarData;
+        }
+
+        function renderCalendar(data) {
+            const calendarContainer = document.getElementById('calendar-container');
+            calendarContainer.innerHTML = '';
+            
+            const firstDateKey = Object.keys(data)[0];
+            const sampleDate = new Date(firstDateKey);
+            
+            const year = sampleDate.getFullYear();
+            const month = sampleDate.getMonth();
+
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+            const firstDayOfMonth = new Date(year, month, 1);
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const startDayOfWeek = firstDayOfMonth.getDay();
+
+            let html = `
+                <div class="calendar-header">
+                    <h2>${monthNames[month]} ${year}</h2>
+                </div>
+                <div class="calendar-grid">
+            `;
+            
+            // Weekday headers
+            dayNames.forEach(day => {
+                html += `<div class="calendar-weekday">${day}</div>`;
+            });
+
+            // Blank days before the 1st
+            for (let i = 0; i < startDayOfWeek; i++) {
+                html += `<div class="calendar-day other-month"></div>`;
+            }
+
+            // Days of the month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const currentDate = new Date(year, month, day);
+                const today = new Date();
+                let dayClasses = 'calendar-day';
+                if (currentDate.toDateString() === today.toDateString()) {
+                    dayClasses += ' today';
+                }
+                
+                html += `<div class="${dayClasses}">`;
+                html += `<div class="day-number">${day}</div>`;
+                html += `<div class="events-list">`;
+                
+                const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                if (data[dateKey]) {
+                    data[dateKey].forEach(event => {
+                        const title = event.type === 'holiday' 
+                            ? `${event.country} - ${event.eventName}`
+                            : `Event: ${event.eventName}\nTime: ${event.time}\nCountry: ${event.country}\nImportance: ${event.importance} Star(s)\nActual: ${event.actual}\nForecast: ${event.forecast}\nPrevious: ${event.previous}`;
+
+                        if (event.type === 'holiday') {
+                            html += `<div class="holiday-item" title="${title}">
+                                        <span>${event.country ? event.country.substring(0,3).toUpperCase() : ''} Holiday</span>
+                                     </div>`;
+                        } else {
+                            html += `<div class="event-item imp-${event.importance}" title="${title}">
+                                        <span class="event-currency">${event.currency}</span>
+                                        <span>${event.eventName}</span>
+                                     </div>`;
+                        }
+                    });
+                }
+                
+                html += `</div></div>`;
+            }
+            
+            // Calculate remaining blank cells to complete the grid
+            const totalCells = startDayOfWeek + daysInMonth;
+            const remainingCells = totalCells % 7 === 0 ? 0 : 7 - (totalCells % 7);
+            for(let i=0; i<remainingCells; i++) {
+                html += `<div class="calendar-day other-month"></div>`;
+            }
+
+            html += `</div>`; // Close calendar-grid
+            calendarContainer.innerHTML = html;
+        }
+
+    </script>
+</body>
+</html>
