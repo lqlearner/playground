@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Economic Calendar</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f5faff;
+      margin: 0;
+      padding: 20px;
+      color: #043e61;
+    }
+    h1 {
+      text-align: center;
+      color: #004b8d;
+      margin-bottom: 10px;
+    }
+    .controls {
+      max-width: 600px;
+      margin: 0 auto 20px;
+      background: #e3f0ff;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 15px;
+    }
+    label {
+      font-weight: 500;
+      margin-right: 6px;
+    }
+    select, button {
+      padding: 8px 14px;
+      font-size: 15px;
+      border: 1px solid #3390ff;
+      border-radius: 6px;
+      background-color: #ffffff;
+      color: #004b8d;
+    }
+    button:hover {
+      background-color: #004b8d;
+      color: #fff;
+      cursor: pointer;
+    }
+    .calendar {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 1px;
+      background: #cce4ff;
+      border: 2px solid #99c9f3;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+    .day, .day-header {
+      background: #ffffff;
+      padding: 10px;
+      min-height: 120px;
+      box-sizing: border-box;
+      transition: background 0.3s ease;
+      border-right: 1px solid #d8e6f3;
+      border-bottom: 1px solid #d8e6f3;
+    }
+    .day-header {
+      background: #d1e7ff;
+      font-weight: bold;
+      text-align: center;
+      color: #083e78;
+    }
+    .day:hover {
+      background: #d4ebff;
+    }
+    .event {
+      background: #e9f4ff;
+      margin-top: 6px;
+      padding: 5px;
+      font-size: 12px;
+      border-left: 4px solid;
+      border-radius: 4px;
+      position: relative;
+      cursor: help;
+    }
+    .event.high {
+      border-color: #e63946;
+      color: #c1121f;
+      font-weight: bold;
+    }
+    .event.medium {
+      border-color: #ffba08;
+      color: #c37c00;
+    }
+    .event.low {
+      border-color: #52b788;
+      color: #23775a;
+    }
+    .event:hover::after {
+      content: attr(data-detail);
+      position: absolute;
+      top: 100%;
+      left: 0;
+      z-index: 10;
+      background: #f0faff;
+      color: #000;
+      border: 1px solid #ccc;
+      padding: 8px;
+      font-size: 12px;
+      white-space: pre-line;
+      width: max-content;
+      max-width: 240px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      border-radius: 6px;
+    }
+    @media (max-width: 768px) {
+      .calendar {
+        font-size: 13px;
+      }
+      .controls {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <h1>Monthly Economic Calendar</h1>
+  <div class="controls">
+    <label for="month">Month:</label>
+    <select id="month"></select>
+    <label for="year">Year:</label>
+    <select id="year"></select>
+    <button onclick="loadCalendar()">Get Calendar</button>
+  </div>
+  <div class="calendar" id="calendar"></div>
+
+  <script>
+    const calendarEl = document.getElementById('calendar');
+    const monthEl = document.getElementById('month');
+    const yearEl = document.getElementById('year');
+
+    const apiKey = 'a6cf2fb9132a4f4:kwual1kffk3rd0e';
+
+    for (let m = 0; m < 12; m++) {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.text = new Date(0, m).toLocaleString('default', { month: 'long' });
+      monthEl.appendChild(opt);
+    }
+
+    const thisYear = new Date().getFullYear();
+    for (let y = thisYear - 2; y <= thisYear + 2; y++) {
+      const opt = document.createElement('option');
+      opt.value = y;
+      opt.text = y;
+      yearEl.appendChild(opt);
+    }
+
+    monthEl.value = new Date().getMonth();
+    yearEl.value = new Date().getFullYear();
+
+    function loadCalendar() {
+      const month = parseInt(monthEl.value);
+      const year = parseInt(yearEl.value);
+
+      const firstDay = new Date(year, month, 1);
+      const lastDay = new Date(year, month + 1, 0);
+
+      const startDateStr = firstDay.toISOString().split('T')[0];
+      const endDateStr = lastDay.toISOString().split('T')[0];
+
+      const apiURL = `https://api.tradingeconomics.com/calendar/country/All/${startDateStr}/${endDateStr}?c=${apiKey}&f=json`;
+
+      fetch(apiURL)
+        .then(res => res.json())
+        .then(data => renderCalendar(firstDay, lastDay, data))
+        .catch(err => alert("API Error: " + err));
+    }
+
+    function renderCalendar(firstDay, lastDay, events) {
+      calendarEl.innerHTML = '';
+
+      const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+      for (let d of dayNames) {
+        const div = document.createElement('div');
+        div.className = 'day-header';
+        div.innerText = d;
+        calendarEl.appendChild(div);
+      }
+
+      const startWeekDay = firstDay.getDay();
+      const totalDays = lastDay.getDate();
+      const totalBoxes = Math.ceil((startWeekDay + totalDays) / 7) * 7;
+
+      for (let i = 0; i < totalBoxes; i++) {
+        const cell = document.createElement('div');
+        cell.className = 'day';
+
+        const dayNum = i - startWeekDay + 1;
+        if (i >= startWeekDay && dayNum <= totalDays) {
+          const dateStr = new Date(firstDay.getFullYear(), firstDay.getMonth(), dayNum)
+            .toISOString().split('T')[0];
+
+          const eventList = events.filter(e => e.Date.startsWith(dateStr));
+          cell.innerHTML = `<strong>${dayNum}</strong>`;
+
+          for (let e of eventList) {
+            const div = document.createElement('div');
+            div.className = `event ${importanceClass(e.Importance)}`;
+            div.setAttribute('data-detail', `Country: ${e.Country}\nCategory: ${e.Category}\nActual: ${e.Actual || 'N/A'}\nPrevious: ${e.Previous || 'N/A'}\nForecast: ${e.Forecast || 'N/A'}`);
+            div.innerText = `${e.Country}: ${e.Event}`;
+            cell.appendChild(div);
+          }
+        }
+        calendarEl.appendChild(cell);
+      }
+    }
+
+    function importanceClass(level) {
+      if (level >= 3) return 'high';
+      if (level === 2) return 'medium';
+      return 'low';
+    }
+
+    loadCalendar();
+  </script>
+</body>
+</html>
