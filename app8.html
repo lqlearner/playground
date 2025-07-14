@@ -18,7 +18,7 @@
       margin-bottom: 10px;
     }
     .controls {
-      max-width: 600px;
+      max-width: 900px;
       margin: 0 auto 20px;
       background: #e3f0ff;
       border-radius: 8px;
@@ -26,20 +26,29 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
       display: flex;
       flex-wrap: wrap;
-      justify-content: center;
+      align-items: center;
+      justify-content: space-between;
       gap: 15px;
     }
-    label {
+    .controls label {
       font-weight: 500;
       margin-right: 6px;
     }
-    select, button {
+    .controls select, .controls button {
       padding: 8px 14px;
       font-size: 15px;
       border: 1px solid #3390ff;
       border-radius: 6px;
       background-color: #ffffff;
       color: #004b8d;
+    }
+    .importance-group {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .importance-group label {
+      font-weight: normal;
     }
     button:hover {
       background-color: #004b8d;
@@ -114,9 +123,6 @@
       border-radius: 6px;
     }
     @media (max-width: 768px) {
-      .calendar {
-        font-size: 13px;
-      }
       .controls {
         flex-direction: column;
         align-items: center;
@@ -131,6 +137,12 @@
     <select id="month"></select>
     <label for="year">Year:</label>
     <select id="year"></select>
+    <label for="importance">Importance:</label>
+    <div id="importance" class="importance-group">
+      <label><input type="checkbox" value="3"> High</label>
+      <label><input type="checkbox" value="2"> Medium</label>
+      <label><input type="checkbox" value="1"> Low</label>
+    </div>
     <button onclick="loadCalendar()">Get Calendar</button>
   </div>
   <div class="calendar" id="calendar"></div>
@@ -160,25 +172,38 @@
     monthEl.value = new Date().getMonth();
     yearEl.value = new Date().getFullYear();
 
-    function loadCalendar() {
+    // Load calendar data from local storage or API
+    async function loadCalendar() {
       const month = parseInt(monthEl.value);
       const year = parseInt(yearEl.value);
+      const importanceFilter = Array.from(document.querySelectorAll('#importance input[type=checkbox]:checked')).map(checkbox => parseInt(checkbox.value));
 
-      const firstDay = new Date(year, month, 1);
-      const lastDay = new Date(year, month + 1, 0);
+      const storageKey = `calendarData_${year}_${month}`;
+      let calendarData = JSON.parse(localStorage.getItem(storageKey));
 
-      const startDateStr = firstDay.toISOString().split('T')[0];
-      const endDateStr = lastDay.toISOString().split('T')[0];
+      if (!calendarData) {
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
 
-      const apiURL = `https://api.tradingeconomics.com/calendar/country/All/${startDateStr}/${endDateStr}?c=${apiKey}&f=json`;
+        const startDateStr = firstDay.toISOString().split('T')[0];
+        const endDateStr = lastDay.toISOString().split('T')[0];
 
-      fetch(apiURL)
-        .then(res => res.json())
-        .then(data => renderCalendar(firstDay, lastDay, data))
-        .catch(err => alert("API Error: " + err));
+        const apiURL = `https://api.tradingeconomics.com/calendar/country/All/${startDateStr}/${endDateStr}?c=${apiKey}&f=json`;
+
+        try {
+          const res = await fetch(apiURL);
+          calendarData = await res.json();
+          localStorage.setItem(storageKey, JSON.stringify(calendarData)); // Store fetched data
+        } catch (err) {
+          alert("API Error: " + err);
+          return;
+        }
+      }
+
+      renderCalendar(new Date(year, month, 1), new Date(year, month + 1, 0), calendarData, importanceFilter);
     }
 
-    function renderCalendar(firstDay, lastDay, events) {
+    function renderCalendar(firstDay, lastDay, events, importanceFilter) {
       calendarEl.innerHTML = '';
 
       const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -202,7 +227,12 @@
           const dateStr = new Date(firstDay.getFullYear(), firstDay.getMonth(), dayNum)
             .toISOString().split('T')[0];
 
-          const eventList = events.filter(e => e.Date.startsWith(dateStr));
+          // Apply importance filter
+          let eventList = events.filter(e => e.Date.startsWith(dateStr));
+          if (importanceFilter && importanceFilter.length > 0) {
+            eventList = eventList.filter(e => importanceFilter.includes(parseInt(e.Importance)));
+          }
+
           cell.innerHTML = `<strong>${dayNum}</strong>`;
 
           for (let e of eventList) {
@@ -222,6 +252,9 @@
       if (level === 2) return 'medium';
       return 'low';
     }
+
+    // Load calendar on filter change
+    document.getElementById('importance').addEventListener('change', loadCalendar);
 
     loadCalendar();
   </script>
