@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Economic Events Calendar</title>
+    <style>
+        /* --- Basic Setup & Fonts --- */
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f4f7f6;
+            color: #333;
+            margin: 0;
+            padding: 15px;
+        }
+
+        h1, h2 {
+            text-align: center;
+            color: #2c3e50;
+        }
+
+        /* --- New: Setup Area for Instructions and Input --- */
+        #toggle-setup-btn {
+            display: block;
+            margin: 0 auto 10px;
+            padding: 8px 12px;
+            cursor: pointer;
+            font-weight: bold;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            background-color: #007bff;
+            color: white;
+            transition: background-color 0.2s;
+        }
+        #toggle-setup-btn:hover {
+            background-color: #0056b3;
+        }
+        #setup-container {
+            margin: 0 auto 20px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background-color: #ffffff;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            max-width: 95%; /* Responsive max width */
+        }
+        #setup-container h3 {
+            margin-top: 0;
+            text-align: left;
+            color: #34495e;
+        }
+        #setup-container ol {
+            padding-left: 20px;
+        }
+        #setup-container li {
+            margin-bottom: 8px;
+        }
+        #html-input {
+            width: 100%;
+            height: 150px;
+            box-sizing: border-box;
+            margin-top: 10px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        #convert-btn {
+            display: block;
+            margin-top: 10px;
+            padding: 10px 15px;
+            cursor: pointer;
+            font-weight: bold;
+            border: 1px solid transparent;
+            border-radius: 4px;
+            background-color: #28a745;
+            color: white;
+            transition: background-color 0.2s;
+        }
+        #convert-btn:hover {
+            background-color: #218838;
+        }
+
+
+        /* --- Calendar Container & Loading --- */
+        #calendar-container {
+            margin: 20px auto;
+            background-color: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+        }
+
+        #loading {
+            text-align: center;
+            font-size: 1.2em;
+            padding: 40px;
+            color: #777;
+        }
+        
+        /* --- Filter Controls --- */
+        #filter-controls {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #e0e0e0;
+            text-align: center;
+        }
+        #filter-controls fieldset {
+            border: none;
+            padding: 0;
+            margin: 0;
+            display: inline-block;
+        }
+        #filter-controls legend {
+            font-weight: bold;
+            margin-bottom: 10px;
+            font-size: 1.1em;
+            color: #34495e;
+        }
+        .filter-option {
+            display: inline-flex;
+            align-items: center;
+            margin: 0 15px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+        .filter-option input {
+            margin-right: 8px;
+        }
+        .filter-option .color-swatch {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 5px;
+            display: inline-block;
+        }
+
+        /* --- Single Grid Container for Perfect Alignment --- */
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+        
+        .day-name {
+            text-align: center;
+            padding: 10px 0;
+            font-weight: bold;
+            color: #007bff;
+        }
+
+        .day {
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 8px;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            transition: box-shadow 0.2s ease-in-out;
+            background-color: #fff;
+        }
+        .day:hover {
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.2);
+        }
+        .day.other-month {
+            background-color: #f8f9fa;
+        }
+        .day-number {
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        /* --- Event Styling --- */
+        .events {
+            flex-grow: 1;
+            overflow-y: auto;
+            font-size: 0.8em;
+        }
+        .event {
+            padding: 4px 6px;
+            margin-bottom: 4px;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            border-left: 4px solid;
+        }
+        .event-name {
+            margin-left: 5px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* --- Color Coding Based on Importance --- */
+        .event[data-importance="high"] { background-color: #fbe9e7; border-left-color: #dc3545; }
+        .event[data-importance="moderate"] { background-color: #fff8e1; border-left-color: #ffc107; }
+        .event[data-importance="low"] { background-color: #f1f3f5; border-left-color: #6c757d; }
+        .event[data-importance="holiday"] { background-color: #e0f2fe; border-left-color: #0ea5e9; }
+
+        /* Color swatches for the filter controls */
+        .color-swatch.high { background-color: #dc3545; }
+        .color-swatch.moderate { background-color: #ffc107; }
+        .color-swatch.low { background-color: #6c757d; }
+        .color-swatch.holiday { background-color: #0ea5e9; }
+        
+        /* --- Flag CSS --- */
+        .ceFlags{width:16px;height:15px;background-image:url('https://i-invdn-com.investing.com/ce_flags_v6.png');background-repeat:no-repeat;display:inline-block;flex-shrink:0;}
+        .Argentina{background-position:0 -204px;}.Australia{background-position:0 -255px;}.Brazil{background-position:0 -527px;}.Canada{background-position:0 -680px;}.China{background-position:0 -782px;}.France{background-position:0 -1292px;}.Germany{background-position:0 -1360px;}.Hong_Kong{background-position:0 -1598px;}.India{background-position:0 -1649px;}.Italy{background-position:0 -1768px;}.Japan{background-position:0 -1802px;}.New_Zealand{background-position:-17px -561px;}.Russian_Federation{background-position:-17px -1003px;}.South_Africa{background-position:-17px -1309px;}.South_Korea{background-position:-17px -1326px;}.Spain{background-position:-17px -1343px;}.Switzerland{background-position:-17px -1479px;}.United_Kingdom{background-position:-17px -1836px;}.United_States{background-position:-17px -1751px;}.Europe{background-position:0 -1224px;}.Singapore{background-position:-17px -1207px;}
+    </style>
+</head>
+<body>
+
+    <button id="toggle-setup-btn">Hide Instructions</button>
+
+    <div id="setup-container">
+        <h3>Instructions</h3>
+        <ol>
+            <li>Open the following URL in a new tab: 
+                <a href="https://sslecal2.investing.com?columns=exc_flags,exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous&features=datepicker,timezone&countries=25,32,6,37,72,22,17,39,14,10,35,43,56,36,110,11,26,12,4,5&calType=week&timeZone=8&lang=1" target="_blank" rel="noopener noreferrer">Investing.com Economic Calendar</a>
+            </li>
+            <li>Copy the entire HTML content of that page (e.g., right-click, "View Page Source", then copy all).</li>
+            <li>Paste the copied HTML content into the text area below.</li>
+        </ol>
+        <textarea id="html-input" placeholder="Paste HTML content here..."></textarea>
+        <button id="convert-btn">Convert to Calendar</button>
+    </div>
+
+    <div id="calendar-container">
+        <h1>Interactive Economic Events Calendar</h1>
+        <div id="calendar-header-placeholder"></div>
+        
+        <div id="filter-controls">
+            <fieldset>
+                <legend>Filter by Type</legend>
+                <label class="filter-option">
+                    <input type="checkbox" name="importance" value="high" checked>
+                    <span class="color-swatch high"></span> High
+                </label>
+                <label class="filter-option">
+                    <input type="checkbox" name="importance" value="moderate" checked>
+                    <span class="color-swatch moderate"></span> Moderate
+                </label>
+                <label class="filter-option">
+                    <input type="checkbox" name="importance" value="low" checked>
+                    <span class="color-swatch low"></span> Low
+                </label>
+                <label class="filter-option">
+                    <input type="checkbox" name="importance" value="holiday" checked>
+                    <span class="color-swatch holiday"></span> Holiday
+                </label>
+            </fieldset>
+        </div>
+
+        <div id="loading">Paste HTML content above and click "Convert to Calendar" to begin.</div>
+        <div id="calendar-grid-wrapper"></div>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const loadingIndicator = document.getElementById('loading');
+        const calendarHeaderPlaceholder = document.getElementById('calendar-header-placeholder');
+        const calendarGridWrapper = document.getElementById('calendar-grid-wrapper');
+        const htmlInput = document.getElementById('html-input');
+        const convertBtn = document.getElementById('convert-btn');
+        const toggleBtn = document.getElementById('toggle-setup-btn');
+        const setupContainer = document.getElementById('setup-container');
+
+        toggleBtn.addEventListener('click', () => {
+            const isHidden = setupContainer.style.display === 'none';
+            setupContainer.style.display = isHidden ? 'block' : 'none';
+            toggleBtn.textContent = isHidden ? 'Hide Instructions' : 'Show Instructions';
+        });
+
+        convertBtn.addEventListener('click', processPastedHtml);
+
+        function processPastedHtml() {
+            const htmlText = htmlInput.value;
+            if (!htmlText.trim()) {
+                alert('Please paste the HTML content before converting.');
+                return;
+            }
+
+            loadingIndicator.style.display = 'block';
+            loadingIndicator.textContent = 'Processing...';
+            calendarGridWrapper.innerHTML = '';
+            calendarHeaderPlaceholder.innerHTML = '';
+
+            setTimeout(() => {
+                try {
+                    const { events, startDate } = parseEventsFromHTML(htmlText);
+                    
+                    if (!startDate) {
+                        loadingIndicator.textContent = 'Could not determine a start date from the pasted HTML. Please ensure you copied the correct page source with an "ecEventsTable".';
+                        return;
+                    }
+                    
+                    const { calendarHtml, headerHtml } = generateCalendar(events, startDate);
+                    calendarHeaderPlaceholder.innerHTML = headerHtml;
+                    calendarGridWrapper.innerHTML = calendarHtml;
+                    loadingIndicator.style.display = 'none';
+
+                    setupFilters();
+                } catch (error) {
+                    console.error('Failed to process pasted HTML:', error);
+                    loadingIndicator.textContent = `Failed to process pasted HTML. Please check the console for errors. Error: ${error.message}`;
+                }
+            }, 10);
+        }
+
+        /**
+         * [REVISED based on analysis of the ecEventsTable structure]
+         * Parses the HTML string from Investing.com to extract economic events.
+         * This function is designed to handle the specific structure of the 'ecEventsTable'.
+         */
+        function parseEventsFromHTML(htmlText) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlText, 'text/html');
+
+            let startDate = doc.getElementById('dateFrom')?.value || null;
+            const eventsTable = doc.getElementById('ecEventsTable');
+            
+            if (!eventsTable) {
+                console.error("Could not find the 'ecEventsTable' in the pasted HTML.");
+                return { events: {}, startDate: null };
+            }
+
+            const eventsByDate = {};
+            let currentDayForHolidays = null;
+
+            eventsTable.querySelectorAll('tbody tr').forEach(row => {
+                // Check if this row is a date separator.
+                const dayCell = row.querySelector('td.theDay');
+                if (dayCell && dayCell.id) {
+                    const epochSeconds = dayCell.id.replace('theDay', '');
+                    if (!isNaN(epochSeconds)) {
+                        // The ID contains a UTC epoch timestamp (in seconds), which is the most reliable date source.
+                        const date = new Date(parseInt(epochSeconds, 10) * 1000);
+                        currentDayForHolidays = date.toISOString().split('T')[0]; // Format as YYYY-MM-DD
+                        return; // Done with this row.
+                    }
+                }
+
+                // Skip hidden info rows.
+                if (row.id.startsWith('eventInfo')) return;
+
+                // A valid event row must have a cell with class 'event'.
+                const eventNameEl = row.querySelector('td.event');
+                if (!eventNameEl) return;
+                
+                const event = { name: eventNameEl.textContent.trim().replace(/\s\s+/g, ' ') };
+                let dateKey = null;
+
+                // Timed events have a precise `event_timestamp` attribute.
+                if (row.hasAttribute('event_timestamp')) {
+                    dateKey = row.getAttribute('event_timestamp').split(' ')[0]; // Extracts 'YYYY-MM-DD'
+                    event.time = row.querySelector('td.time')?.textContent.trim();
+                } 
+                // All-day events (holidays) are identified by the text in their time cell.
+                else if (row.querySelector('td.time')?.textContent.trim().toLowerCase() === 'all day') {
+                    dateKey = currentDayForHolidays;
+                    event.time = "All Day";
+                }
+
+                if (dateKey) {
+                    if (!eventsByDate[dateKey]) eventsByDate[dateKey] = [];
+                    
+                    const sentimentEl = row.querySelector('td.sentiment');
+                    if (sentimentEl) {
+                        // Holiday importance is in a bold span.
+                        if (sentimentEl.querySelector('span.bold')?.textContent.toLowerCase() === 'holiday') {
+                            event.importance = 'holiday';
+                        } else { // Timed event importance is in the cell's title attribute.
+                            const title = sentimentEl.title.toLowerCase();
+                            if (title.includes('high')) event.importance = 'high';
+                            else if (title.includes('moderate')) event.importance = 'moderate';
+                            else if (title.includes('low')) event.importance = 'low';
+                        }
+                    }
+
+                    const flagEl = row.querySelector('td.flagCur span.ceFlags');
+                    if (flagEl) {
+                        event.country = flagEl.title;
+                        event.countryClass = Array.from(flagEl.classList).find(c => c !== 'ceFlags' && !c.startsWith('float_'));
+                    }
+                    
+                    if (!eventsByDate[dateKey].some(e => e.name === event.name && e.time === event.time)) {
+                       eventsByDate[dateKey].push(event);
+                    }
+                }
+            });
+
+            // If a start date wasn't found in a hidden input, use the earliest event date we parsed.
+            if (!startDate && Object.keys(eventsByDate).length > 0) {
+                startDate = Object.keys(eventsByDate).sort()[0];
+            }
+            
+            return { events: eventsByDate, startDate: startDate };
+        }
+
+        function generateCalendar(eventsByDate, startDateStr) {
+            const date = new Date(startDateStr + 'T12:00:00Z');
+            const month = date.getUTCMonth();
+            const year = date.getUTCFullYear();
+            const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+            const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+            let headerHtml = `<h2>${monthNames[month]} ${year}</h2>`;
+            let calendarHtml = `<div class="calendar-grid">`;
+            dayNames.forEach(day => { calendarHtml += `<div class="day-name">${day}</div>`; });
+
+            const firstDayOfMonth = new Date(Date.UTC(year, month, 1));
+            const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+            const startDayOfWeek = firstDayOfMonth.getUTCDay();
+
+            for (let i = 0; i < startDayOfWeek; i++) calendarHtml += `<div class="day other-month"></div>`;
+
+            for (let day = 1; day <= daysInMonth; day++) {
+                const dateKey = new Date(Date.UTC(year, month, day)).toISOString().split('T')[0];
+                const dayEvents = eventsByDate[dateKey] || [];
+                
+                calendarHtml += `<div class="day"><div class="day-number">${day}</div><div class="events">`;
+                dayEvents.sort((a,b) => (a.time || "").localeCompare(b.time || ""));
+
+                dayEvents.forEach(event => {
+                    const importance = event.importance || 'low';
+                    const fullTitle = `${event.time || ''} - ${event.name} (${event.country || ''})`;
+
+                    calendarHtml += `<div class="event" data-importance="${importance}" title="${fullTitle}">`;
+                    if (event.countryClass) {
+                         calendarHtml += `<span class="ceFlags ${event.countryClass}"></span>`;
+                    }
+                    calendarHtml += `<span class="event-name">${event.name}</span></div>`;
+                });
+                calendarHtml += `</div></div>`;
+            }
+            
+            const totalDayCells = startDayOfWeek + daysInMonth;
+            const remainingCells = (7 - (totalDayCells % 7)) % 7;
+            for (let i = 0; i < remainingCells; i++) calendarHtml += `<div class="day other-month"></div>`;
+            
+            calendarHtml += `</div>`;
+            return { calendarHtml, headerHtml };
+        }
+
+        function setupFilters() {
+            const filterContainer = document.getElementById('filter-controls');
+            
+            const filterChangeHandler = () => {
+                const checkedBoxes = filterContainer.querySelectorAll('input[type="checkbox"]:checked');
+                const selectedImportances = new Set();
+                checkedBoxes.forEach(cb => selectedImportances.add(cb.value));
+
+                document.querySelectorAll('.event').forEach(eventEl => {
+                    const importance = eventEl.dataset.importance;
+                    eventEl.style.display = selectedImportances.has(importance) ? 'flex' : 'none';
+                });
+            };
+            
+            filterContainer.removeEventListener('change', filterChangeHandler); // Avoid duplicate listeners
+            filterContainer.addEventListener('change', filterChangeHandler);
+            
+            filterChangeHandler(); // Apply initial filter state
+        }
+    });
+    </script>
+</body>
+</html>
