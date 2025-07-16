@@ -270,7 +270,7 @@
         toggleBtn.addEventListener('click', () => {
             const isHidden = setupContainer.style.display === 'none';
             setupContainer.style.display = isHidden ? 'block' : 'none';
-            toggleBtn.textContent = isHidden ? 'Hide Instructions' : 'Show Instructions';
+            toggleBtn.textContent = isHidden ? 'Hide Instructions' : 'Show Setup & Instructions';
         });
 
         convertBtn.addEventListener('click', processPastedHtml);
@@ -281,6 +281,12 @@
                 alert('Please paste the HTML content before converting.');
                 return;
             }
+
+            // --- ENHANCEMENT START ---
+            // Automatically hide the setup section and update the toggle button's text.
+            setupContainer.style.display = 'none';
+            toggleBtn.textContent = 'Show Setup & Instructions';
+            // --- ENHANCEMENT END ---
 
             loadingIndicator.style.display = 'block';
             loadingIndicator.textContent = 'Processing...';
@@ -427,11 +433,18 @@
                     const importance = event.importance || 'low';
                     const fullTitle = `${event.time || ''} - ${event.name} (${event.country || ''})`;
 
+                    // --- ENHANCEMENT START ---
+                    // Prepare display text, prepending time if available and not 'All Day'
+                    const displayText = (event.time && event.time.toLowerCase() !== 'all day')
+                        ? `${event.time} ${event.name}`
+                        : event.name;
+
                     calendarHtml += `<div class="event" data-importance="${importance}" title="${fullTitle}">`;
                     if (event.countryClass) {
                          calendarHtml += `<span class="ceFlags ${event.countryClass}"></span>`;
                     }
-                    calendarHtml += `<span class="event-name">${event.name}</span></div>`;
+                    calendarHtml += `<span class="event-name">${displayText}</span></div>`;
+                    // --- ENHANCEMENT END ---
                 });
                 calendarHtml += `</div></div>`;
             }
