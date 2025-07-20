@@ -121,7 +121,7 @@
       copyButton.className = 'icon-btn';
       copyButton.title = "Copy";
       const copyIcon = document.createElement('img');
-      copyIcon.src = "http://localhost:3000/copy.png";
+      copyIcon.src = "./copy.png";
       copyIcon.alt = "Copy";
       copyIcon.width = 16;
       copyIcon.height = 16;
@@ -137,7 +137,7 @@
       editButton.className = 'icon-btn';
       editButton.title = "Edit";
       const editIcon = document.createElement('img');
-      editIcon.src = "http://localhost:3000/editing.png";
+      editIcon.src = "./editing.png";
       editIcon.alt = "Edit";
       editIcon.width = 16;
       editIcon.height = 16;
@@ -224,7 +224,7 @@
       deleteButton.className = 'icon-btn';
       deleteButton.title = "Delete";
       const deleteIcon = document.createElement('img');
-      deleteIcon.src = "http://localhost:3000/delete.png";
+      deleteIcon.src = "./delete.png";
       deleteIcon.alt = "Delete";
       deleteIcon.width = 16;
       deleteIcon.height = 16;
@@ -264,7 +264,7 @@
       align-items:center;
     `;
     const closeIcon = document.createElement('img');
-    closeIcon.src = "http://localhost:3000/close.png";
+    closeIcon.src = "./close.png";
     closeIcon.alt = "Close";
     closeIcon.width = 16;
     closeIcon.height = 16;
@@ -294,14 +294,7 @@
     addBtn.style.gap = '0px';
     addBtn.style.margin = '4px 0 4px 0';
     addBtn.style.fontWeight = 'bold';
-  
-    // Icon
-   // const addIcon = document.createElement('img');
-   // addIcon.src = "http://localhost:3000/add.png";
-   // addIcon.alt = "Add";
-   // addIcon.width = 20;
-   // addIcon.height = 20;
-   // addBtn.appendChild(addIcon);
+
   
     // Text
     const addText = document.createElement('span');
