@@ -1,8 +1,8 @@
 {
     "rewrites": [
       {
-        "source": "/((?!api/).*)",
+        "source": "/((?!api|public/).*)",
         "destination": "/index.html"
       }
     ]
-  }  
+  }
