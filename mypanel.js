@@ -121,7 +121,7 @@
       copyButton.className = 'icon-btn';
       copyButton.title = "Copy";
       const copyIcon = document.createElement('img');
-      copyIcon.src = "./copy.png";
+      copyIcon.src = "https://playground-teal-five.vercel.app/copy.png";
       copyIcon.alt = "Copy";
       copyIcon.width = 16;
       copyIcon.height = 16;
@@ -137,7 +137,7 @@
       editButton.className = 'icon-btn';
       editButton.title = "Edit";
       const editIcon = document.createElement('img');
-      editIcon.src = "./editing.png";
+      editIcon.src = "https://playground-teal-five.vercel.app/editing.png";
       editIcon.alt = "Edit";
       editIcon.width = 16;
       editIcon.height = 16;
@@ -224,7 +224,7 @@
       deleteButton.className = 'icon-btn';
       deleteButton.title = "Delete";
       const deleteIcon = document.createElement('img');
-      deleteIcon.src = "./delete.png";
+      deleteIcon.src = "https://playground-teal-five.vercel.app/delete.png";
       deleteIcon.alt = "Delete";
       deleteIcon.width = 16;
       deleteIcon.height = 16;
@@ -264,7 +264,7 @@
       align-items:center;
     `;
     const closeIcon = document.createElement('img');
-    closeIcon.src = "./close.png";
+    closeIcon.src = "https://playground-teal-five.vercel.app/close.png";
     closeIcon.alt = "Close";
     closeIcon.width = 16;
     closeIcon.height = 16;
