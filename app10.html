@@ -131,7 +131,10 @@
   </head>
   <body>
     <div class="app-container">
-      <input id="apiKeyInput" class="api-key-input" type="password" placeholder="Enter your Google API Key" />
+        <div style="display: flex; align-items: center; margin-bottom: 16px;">
+            <input id="apiKeyInput" class="api-key-input" type="password" placeholder="Enter your Google API Key" style="margin-bottom: 0;"/>
+            <button id="saveApiKeyButton" class="record-button" style="background-color: #28a745; margin-left: 8px; padding: 10px 16px; border-radius: 6px;">Save API Key</button>
+        </div>
       <div class="note-area">
         <div class="editor-title" contenteditable="true" placeholder="Untitled Note">Untitled Note</div>
         <div class="tab-navigation">
@@ -160,6 +163,7 @@
       const waveform = document.getElementById("waveform");
       const canvasCtx = waveform.getContext("2d");
       const apiKeyInput = document.getElementById("apiKeyInput");
+      const saveApiKeyButton = document.getElementById("saveApiKeyButton");
 
       let mediaRecorder;
       let audioChunks = [];
@@ -183,6 +187,42 @@
       }
 
       apiKeyInput.addEventListener("input", checkApiKey);
+
+      // Function to encrypt the API key (replace with actual encryption logic)
+      function encryptApiKey(apiKey) {
+        // Placeholder for encryption logic
+        console.log("Encrypting API key", apiKey);
+        return btoa(apiKey); // Basic base64 encoding as a placeholder
+      }
+
+      // Function to decrypt the API key (replace with actual decryption logic)
+      function decryptApiKey(encryptedApiKey) {
+        // Placeholder for decryption logic
+        console.log("Decrypting API key", encryptedApiKey);
+        return atob(encryptedApiKey); // Basic base64 decoding as a placeholder
+      }
+
+      saveApiKeyButton.addEventListener("click", () => {
+        const apiKey = apiKeyInput.value.trim();
+        if (apiKey) {
+          const encryptedApiKey = encryptApiKey(apiKey);
+          localStorage.setItem("DictationAPIKey", encryptedApiKey);
+          alert("API Key saved and encrypted!");
+        } else {
+          alert("Please enter an API key to save.");
+        }
+      });
+
+      // Load API key from local storage on page load
+      window.addEventListener("load", () => {
+        const encryptedApiKey = localStorage.getItem("DictationAPIKey");
+        if (encryptedApiKey) {
+          const decryptedApiKey = decryptApiKey(encryptedApiKey);
+          apiKeyInput.value = decryptedApiKey;
+          checkApiKey(); // Update the UI based on the loaded API key
+          alert("API Key loaded and decrypted!");
+        }
+      });
 
       // Initial check when the page loads
       checkApiKey();
