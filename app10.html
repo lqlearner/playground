@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dictation App</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      body {
+        margin: 0;
+        font-family: 'Inter', sans-serif;
+        background: #f9fafb;
+        color: #333;
+      }
+      .app-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        padding: 32px 16px;
+        min-height: 100vh;
+      }
+      .note-area {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+        max-width: 960px;
+        width: 100%;
+        padding: 24px;
+        margin-bottom: 24px;
+      }
+      .editor-title {
+        font-size: 1.75em;
+        font-weight: 600;
+        border: none;
+        border-bottom: 2px solid #e0e0e0;
+        padding: 12px;
+        margin-bottom: 16px;
+        background: #f0f2f5;
+        border-radius: 6px;
+      }
+      .note-content-wrapper {
+        display: flex;
+        flex-direction: column;
+      }
+      .note-content {
+        display: none;
+        border: 1px solid #ddd;
+        background: #fafafa;
+        padding: 16px;
+        border-radius: 8px;
+        min-height: 240px;
+        margin-bottom: 12px;
+        white-space: pre-wrap;
+      }
+      .note-content.active {
+        display: block;
+      }
+      .tab-navigation {
+        display: flex;
+        margin-bottom: 12px;
+        border-bottom: 2px solid #eee;
+      }
+      .tab-button {
+        background: none;
+        border: none;
+        padding: 10px 20px;
+        cursor: pointer;
+        font-weight: 500;
+        color: #555;
+        transition: all 0.2s;
+      }
+      .tab-button:hover {
+        background-color: #f2f2f2;
+      }
+      .tab-button.active {
+        color: #007bff;
+        border-bottom: 3px solid #007bff;
+        font-weight: 600;
+      }
+      .recording-interface {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 16px;
+      }
+      .record-button {
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      .record-button:hover {
+        background-color: #c82333;
+      }
+      .record-button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .api-key-input {
+        width: 100%;
+        max-width: 500px;
+        margin-top: 8px;
+        padding: 10px;
+        border-radius: 6px;
+        border: 1px solid #ccc;
+        font-size: 14px;
+        margin-bottom: 16px;
+      }
+      .debug-panel {
+        margin-top: 20px;
+        color: #888;
+        font-size: 13px;
+      }
+      #waveform {
+        width: 100%;
+        height: 60px;
+        background: #eaeaea;
+        border-radius: 6px;
+        margin-top: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-container">
+      <input id="apiKeyInput" class="api-key-input" type="password" placeholder="Enter your Google API Key" />
+      <div class="note-area">
+        <div class="editor-title" contenteditable="true" placeholder="Untitled Note">Untitled Note</div>
+        <div class="tab-navigation">
+          <button class="tab-button active" data-tab="note">Polished</button>
+          <button class="tab-button" data-tab="raw">Raw</button>
+        </div>
+        <div class="note-content-wrapper">
+          <div id="polishedNote" class="note-content active" contenteditable="true" placeholder="Your polished notes will appear here..."></div>
+          <div id="rawTranscription" class="note-content" contenteditable="true" placeholder="Raw transcription will appear here..."></div>
+        </div>
+      </div>
+      <div class="recording-interface">
+        <button id="recordButton" class="record-button">Start Recording</button>
+        <button id="stopButton" class="record-button" style="background-color: gray; display: none;">Stop</button>
+      </div>
+      <canvas id="waveform"></canvas>
+      <div id="micStatus" class="debug-panel">Model: gemini-2.0-flash</div>
+    </div>
+    <script>
+      const MODEL_NAME = "gemini-2.0-flash";
+      const polishedNote = document.getElementById("polishedNote");
+      const rawTranscription = document.getElementById("rawTranscription");
+      const recordBtn = document.getElementById("recordButton");
+      const stopBtn = document.getElementById("stopButton");
+      const waveform = document.getElementById("waveform");
+      const canvasCtx = waveform.getContext("2d");
+      const apiKeyInput = document.getElementById("apiKeyInput");
+
+      let mediaRecorder;
+      let audioChunks = [];
+      let analyser, dataArray, animationId, audioContext, source;
+
+      document.querySelectorAll(".tab-button").forEach(btn => {
+        btn.addEventListener("click", () => {
+          document.querySelectorAll(".tab-button").forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+
+          if (btn.dataset.tab === "note") {
+            polishedNote.classList.add("active");
+            rawTranscription.classList.remove("active");
+          } else {
+            rawTranscription.classList.add("active");
+            polishedNote.classList.remove("active");
+          }
+        });
+      });
+
+      function startWaveform(stream) {
+        audioContext = new AudioContext();
+        source = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        source.connect(analyser);
+        const bufferLength = analyser.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
+
+        function draw() {
+          animationId = requestAnimationFrame(draw);
+          analyser.getByteFrequencyData(dataArray);
+          canvasCtx.fillStyle = '#f3f3f3';
+          canvasCtx.fillRect(0, 0, waveform.width, waveform.height);
+          const barWidth = (waveform.width / bufferLength) * 2.5;
+          let x = 0;
+          for (let i = 0; i < bufferLength; i++) {
+            const barHeight = dataArray[i];
+            canvasCtx.fillStyle = '#007bff';
+            canvasCtx.fillRect(x, waveform.height - barHeight / 2, barWidth, barHeight / 2);
+            x += barWidth + 1;
+          }
+        }
+        draw();
+      }
+
+      function stopWaveform() {
+        cancelAnimationFrame(animationId);
+        if (audioContext) audioContext.close();
+        canvasCtx.clearRect(0, 0, waveform.width, waveform.height);
+      }
+
+      recordBtn.addEventListener("click", async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          mediaRecorder = new MediaRecorder(stream);
+          audioChunks = [];
+
+          mediaRecorder.ondataavailable = (event) => {
+            if (event.data.size > 0) audioChunks.push(event.data);
+          };
+
+          mediaRecorder.onstop = handleRecordingStop;
+
+          mediaRecorder.start();
+          startWaveform(stream);
+          recordBtn.style.display = "none";
+          stopBtn.style.display = "inline-block";
+        } catch (err) {
+          console.error("Microphone access error", err);
+        }
+      });
+
+      stopBtn.addEventListener("click", () => {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          mediaRecorder.stop();
+        }
+        stopWaveform();
+        recordBtn.style.display = "inline-block";
+        stopBtn.style.display = "none";
+      });
+
+      async function handleRecordingStop() {
+        const apiKey = apiKeyInput.value.trim();
+        if (!apiKey) {
+          alert("Please enter your API key.");
+          return;
+        }
+
+        const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+
+        reader.onloadend = async () => {
+          const base64 = reader.result.split(',')[1];
+          const payload = {
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  { text: "Generate a complete, detailed transcript of this audio." },
+                  { inlineData: { mimeType: "audio/webm", data: base64 } }
+                ]
+              }
+            ]
+          };
+
+          try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            console.log("Transcription result", result);
+            const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '[No result]';
+            rawTranscription.textContent = text;
+
+            const polishPayload = {
+              contents: [
+                {
+                  role: "user",
+                  parts: [
+                    { text: `Take this raw transcription and create a polished, well-formatted note.\n\n${text}` }
+                  ]
+                }
+              ]
+            };
+
+            const polishResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(polishPayload)
+            });
+
+            const polishResult = await polishResponse.json();
+            console.log("Polished note result", polishResult);
+            const polishText = polishResult.candidates?.[0]?.content?.parts?.[0]?.text || '[No polish result]';
+            polishedNote.innerHTML = polishText.replace(/\n/g, '<br>');
+          } catch (err) {
+            console.error("Error during transcription or polishing", err);
+            rawTranscription.textContent = '[Error processing audio]';
+          }
+        };
+      }
+    </script>
+  </body>
+</html>
