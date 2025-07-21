@@ -145,6 +145,7 @@
       </div>
       <div class="recording-interface">
         <button id="recordButton" class="record-button">Start Recording</button>
+        <span id="apiKeyReminder" style="color: grey; margin-left: 8px; display:none">Must input API key first</span>
         <button id="stopButton" class="record-button" style="background-color: gray; display: none;">Stop</button>
       </div>
       <canvas id="waveform"></canvas>
@@ -163,6 +164,30 @@
       let mediaRecorder;
       let audioChunks = [];
       let analyser, dataArray, animationId, audioContext, source;
+
+      function checkApiKey() {
+        const apiKey = apiKeyInput.value.trim();
+        if (!apiKey) {
+          recordBtn.disabled = true;
+          recordBtn.textContent = "Enter API Key First";
+          recordBtn.style.backgroundColor = "gray";
+          apiKeyReminder.style.display = "inline";
+          return false;
+        } else {
+          recordBtn.disabled = false;
+          recordBtn.textContent = "Start Recording";
+          recordBtn.style.backgroundColor = "#dc3545";
+          apiKeyReminder.style.display = "none";
+          return true;
+        }
+      }
+
+      apiKeyInput.addEventListener("input", checkApiKey);
+
+      // Initial check when the page loads
+      checkApiKey();
+
+
 
       document.querySelectorAll(".tab-button").forEach(btn => {
         btn.addEventListener("click", () => {
@@ -212,6 +237,10 @@
       }
 
       recordBtn.addEventListener("click", async () => {
+        if (!checkApiKey()) {
+          alert("Please enter your API key.");
+          return;
+        }
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           mediaRecorder = new MediaRecorder(stream);
