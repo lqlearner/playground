@@ -679,15 +679,33 @@
 
       function stopChunkRecording() {
         isChunkRecording = false;
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-          mediaRecorder.stop();
-        }
         if (chunkTimer) clearTimeout(chunkTimer);
-        if (stream) stream.getTracks().forEach(track => track.stop());
-        if (audioContext) audioContext.close();
-        cancelAnimationFrame(animationId);
-        waveform.style.display = "none";
-        canvasCtx.clearRect(0, 0, waveform.width, waveform.height);
+
+        // If mediaRecorder is recording, stop and process the last chunk
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          // Save reference to current audioChunks
+          const lastChunks = audioChunks.slice();
+          mediaRecorder.onstop = () => {
+            // Only process if there is data
+            if (lastChunks && lastChunks.length > 0) {
+              processAudioChunk(new Blob(lastChunks, { type: 'audio/webm' }));
+            }
+            // Clean up
+            if (stream) stream.getTracks().forEach(track => track.stop());
+            if (audioContext) audioContext.close();
+            cancelAnimationFrame(animationId);
+            waveform.style.display = "none";
+            canvasCtx.clearRect(0, 0, waveform.width, waveform.height);
+          };
+          mediaRecorder.stop();
+        } else {
+          // If already stopped, just clean up
+          if (stream) stream.getTracks().forEach(track => track.stop());
+          if (audioContext) audioContext.close();
+          cancelAnimationFrame(animationId);
+          waveform.style.display = "none";
+          canvasCtx.clearRect(0, 0, waveform.width, waveform.height);
+        }
       }
 
       function startNewMediaRecorderChunk() {
