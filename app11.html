@@ -390,7 +390,7 @@
             <button id="stopButton"
               class="px-4 py-2 rounded-md text-white bg-red-500 hover:bg-red-600" style="display:none;">Stop Recording</button>
           </div>
-          <canvas id="waveform" class="w-full h-24 bg-gray-100 rounded-md"></canvas>
+          <canvas id="waveform" class="w-full h-24 bg-gray-100 rounded-md" style="display:none;"></canvas>
         </div>
         <!-- Transcription View -->
         <div>
@@ -437,7 +437,11 @@
 
       let mediaRecorder;
       let audioChunks = [];
-      let analyser, dataArray, animationId, audioContext, source;
+      let audioContext;
+      let analyserNode;
+      let source;
+      let stream;
+      let animationId;
 
       function checkApiKey() {
         const apiKey = apiKeyInput.value.trim();
@@ -508,7 +512,7 @@
               gravity: "top",
               position: "center",
               backgroundColor: "#6366f1",
-              stopOnFocus: true,
+              stopOnFocus: true, 
             }).showToast();
           })
           .catch(err => {
@@ -590,55 +594,65 @@
         });
       });
 
-      function startWaveform(stream) {
-        audioContext = new AudioContext();
-        source = audioContext.createMediaStreamSource(stream);
-        analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
-        source.connect(analyser);
-        const bufferLength = analyser.frequencyBinCount;
-        dataArray = new Uint8Array(bufferLength);
+      function drawWaveform() {
+        analyserNode.getByteTimeDomainData(dataArray);
+        canvasCtx.fillStyle = "#e5e7eb";
+        canvasCtx.fillRect(0, 0, waveform.width, waveform.height);
+        canvasCtx.lineWidth = 2;
+        canvasCtx.strokeStyle = "#6366f1";
+        canvasCtx.beginPath();
 
-        function draw() {
-          animationId = requestAnimationFrame(draw);
-          analyser.getByteFrequencyData(dataArray);
-          canvasCtx.fillStyle = '#f3f3f3';
-          canvasCtx.fillRect(0, 0, waveform.width, waveform.height);
-          const barWidth = (waveform.width / bufferLength) * 2.5;
-          let x = 0;
-          for (let i = 0; i < bufferLength; i++) {
-            const barHeight = dataArray[i];
-            canvasCtx.fillStyle = '#007bff';
-            canvasCtx.fillRect(x, waveform.height - barHeight / 2, barWidth, barHeight / 2);
-            x += barWidth + 1;
+        const sliceWidth = waveform.width / dataArray.length;
+        let x = 0;
+
+        for (let i = 0; i < dataArray.length; i++) {
+          const v = dataArray[i] / 128.0;
+          const y = (v * waveform.height) / 2;
+
+          if (i === 0) {
+            canvasCtx.moveTo(x, y);
+          } else {
+            canvasCtx.lineTo(x, y);
           }
-        }
-        draw();
-      }
 
-      function stopWaveform() {
-        cancelAnimationFrame(animationId);
-        if (audioContext) audioContext.close();
-        canvasCtx.clearRect(0, 0, waveform.width, waveform.height);
+          x += sliceWidth;
+        }
+
+        canvasCtx.lineTo(waveform.width, waveform.height / 2);
+        canvasCtx.stroke();
+        animationId = requestAnimationFrame(drawWaveform);
       }
 
       recordBtn.addEventListener("click", async () => {
+        if (!checkApiKey()) return;
+
         try {
-          const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-          const micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const displayStream = await navigator.mediaDevices.getDisplayMedia({
+            video: true,
+            audio: {
+              sampleRate: 48000,
+              channelCount: 2,
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false
+            }
+          });
 
-          const combinedStream = new MediaStream();
+          stream = new MediaStream(displayStream.getAudioTracks());
+          displayStream.getVideoTracks().forEach(track => track.stop());
 
-          // Add system audio track from display stream (if available)
-          displayStream.getAudioTracks().forEach(track => combinedStream.addTrack(track));
+          let mimeType = 'audio/webm';
+          if (!MediaRecorder.isTypeSupported(mimeType)) {
+            console.log(mimeType + ' is not supported');
+            mimeType = 'audio/webm;codecs=opus';
+            if (!MediaRecorder.isTypeSupported(mimeType)) {
+              console.log(mimeType + ' is not supported');
+              mimeType = '';
+            }
+          }
 
-          // Add microphone audio
-          micStream.getAudioTracks().forEach(track => combinedStream.addTrack(track));
-
-          // You may keep this for waveform (only mic)
-          startWaveform(micStream);
-
-          mediaRecorder = new MediaRecorder(combinedStream, { mimeType: 'audio/webm' });
+          const options = mimeType ? { mimeType } : {};
+          mediaRecorder = new MediaRecorder(stream, options);
           audioChunks = [];
 
           mediaRecorder.ondataavailable = (event) => {
@@ -647,15 +661,41 @@
 
           mediaRecorder.onstop = handleRecordingStop;
 
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+          source = audioContext.createMediaStreamSource(stream);
+          analyserNode = audioContext.createAnalyser();
+          analyserNode.fftSize = 2048;
+          dataArray = new Uint8Array(analyserNode.fftSize);
+          source.connect(analyserNode);
+
+          waveform.style.display = "block";
+          waveform.width = waveform.offsetWidth;
+          waveform.height = waveform.offsetHeight;
+          drawWaveform();
+
           mediaRecorder.start();
           recordBtn.style.display = "none";
           stopBtn.style.display = "inline-block";
         } catch (err) {
-          console.error("Error accessing screen or microphone", err);
+          console.error("Error accessing screen or audio", err);
           if (err.name === "NotAllowedError") {
-            alert("Screen recording or microphone access was denied. Please enable it in Settings > Privacy > Microphone/Screen Recording > Chrome.");
+            Toastify({
+              text: "Screen recording access was denied. Please enable it in Settings > Privacy > Screen Recording > Chrome.",
+              duration: 3000,
+              gravity: "top",
+              position: "center",
+              backgroundColor: "#ef4444",
+              stopOnFocus: true,
+            }).showToast();
           } else {
-            alert("Could not access screen or microphone.");
+            Toastify({
+              text: "Could not access screen or audio.",
+              duration: 3000,
+              gravity: "top",
+              position: "center",
+              backgroundColor: "#ef4444",
+              stopOnFocus: true,
+            }).showToast();
           }
         }
       });
@@ -663,8 +703,12 @@
       stopBtn.addEventListener("click", () => {
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
           mediaRecorder.stop();
+          stream.getTracks().forEach(track => track.stop());
+          cancelAnimationFrame(animationId);
+          waveform.style.display = "none";
+          canvasCtx.clearRect(0, 0, waveform.width, waveform.height);
+          if (audioContext) audioContext.close();
         }
-        stopWaveform();
         recordBtn.style.display = "inline-block";
         stopBtn.style.display = "none";
       });
@@ -711,6 +755,7 @@
             console.log("Transcription result", result);
             const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '[No result]';
             rawTranscription.textContent = text;
+            updateTabs();
 
             const polishPayload = {
               contents: [
@@ -733,9 +778,11 @@
             console.log("Polished note result", polishResult);
             const polishText = polishResult.candidates?.[0]?.content?.parts?.[0]?.text || '[No polish result]';
             polishedNote.innerHTML = marked.parse(polishText);
+            updateTabs();
           } catch (err) {
             console.error("Error during transcription or polishing", err);
             rawTranscription.textContent = '[Error processing audio]';
+            updateTabs();
           }
         };
       }
