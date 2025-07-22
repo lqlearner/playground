@@ -11,6 +11,8 @@
     <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
     <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <!-- ADDED: LZ-String library for compression -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
     <style>
       :root {
         --primary-color: #6366f1;
@@ -418,16 +420,153 @@
           </div>
           <p id="copyStatus" class="text-green-500 mt-2" style="display:none;"></p>
         </div>
+        <!-- Meeting Notes Section -->
+        <div class="mt-8">
+          <h2 class="text-lg font-semibold mb-2">Meeting Notes</h2>
+          <button id="exportAllNotesBtn" class="px-3 py-1 bg-blue-500 text-white rounded mb-2">Export All Notes</button>
+          <ul id="meetingNotesList" class="mb-4"></ul>
+          <button id="addNoteBtn" class="px-3 py-1 bg-green-500 text-white rounded">Add New Note</button>
+        </div>
       </div>
     </div>
-    <!-- Toastify, lucide, marked, and your JS logic remain unchanged -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/16.1.1/lib/marked.umd.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+
+    <!-- UPDATED: meetingNotes.js logic is now in a script tag with compression/decompression -->
     <script>
-      const MODEL_NAME = "gemini-2.0-flash";
+        const NOTES_STORAGE_KEY = 'meetingNotes_compressed'; // Use a new key to avoid conflicts with old data
+
+        /**
+         * Loads and decompresses notes from Local Storage.
+         * @returns {Array} An array of note objects.
+         */
+        function loadMeetingNotes() {
+            const compressedNotes = localStorage.getItem(NOTES_STORAGE_KEY);
+            if (!compressedNotes) {
+                return [];
+            }
+            try {
+                // Decompress the string, which might be null if the key is invalid
+                const decompressedJSON = LZString.decompressFromUTF16(compressedNotes);
+                if (!decompressedJSON) {
+                    console.error("Decompression failed or returned empty string. Clearing invalid data.");
+                    localStorage.removeItem(NOTES_STORAGE_KEY); // Clear invalid data
+                    return [];
+                }
+                // Parse the decompressed JSON string
+                return JSON.parse(decompressedJSON);
+            } catch (error) {
+                console.error("Error loading or decompressing meeting notes:", error);
+                // If decompression or parsing fails, return an empty array to prevent app crash
+                return [];
+            }
+        }
+
+        /**
+         * Compresses and saves an array of all notes to Local Storage.
+         * @param {Array} notes - The array of note objects to save.
+         */
+        function saveAllNotes(notes) {
+            try {
+                const jsonNotes = JSON.stringify(notes);
+                const compressedNotes = LZString.compressToUTF16(jsonNotes);
+                localStorage.setItem(NOTES_STORAGE_KEY, compressedNotes);
+            } catch (error) {
+                console.error("Error compressing or saving meeting notes:", error);
+                Toastify({ text: "Failed to save notes due to a compression error.", duration: 3000, gravity: "top", position: "center", backgroundColor: "#ef4444" }).showToast();
+            }
+        }
+
+
+        /**
+         * Saves or updates a single note, then saves the entire compressed collection.
+         * @param {Object} noteData - The note object to save or update.
+         */
+        function saveOrUpdateNote(noteData) {
+            let notes = loadMeetingNotes();
+            const existingNoteIndex = notes.findIndex(note => note.id === noteData.id);
+
+            if (existingNoteIndex > -1) {
+                // Update existing note by merging new data
+                notes[existingNoteIndex] = { ...notes[existingNoteIndex], ...noteData };
+            } else {
+                // Add new note
+                notes.push(noteData);
+            }
+
+            saveAllNotes(notes);
+            Toastify({ text: "Note saved successfully!", duration: 2000, gravity: "top", position: "center", backgroundColor: "#10b981" }).showToast();
+        }
+
+
+        /**
+         * Deletes a note by its ID and saves the updated collection.
+         * @param {string} noteId - The ID of the note to delete.
+         */
+        function deleteNote(noteId) {
+            let notes = loadMeetingNotes();
+            const updatedNotes = notes.filter(note => note.id !== noteId);
+            saveAllNotes(updatedNotes);
+        }
+
+        /**
+         * Exports a single note as a JSON file.
+         * @param {string} noteId - The ID of the note to export.
+         */
+        function exportNote(noteId) {
+            const notes = loadMeetingNotes(); // Gets decompressed notes
+            const noteToExport = notes.find(note => note.id === noteId);
+            if (noteToExport) {
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(noteToExport, null, 2));
+                const downloadAnchorNode = document.createElement('a');
+                downloadAnchorNode.setAttribute("href", dataStr);
+                downloadAnchorNode.setAttribute("download", `note_${noteToExport.title || noteToExport.id}.json`);
+                document.body.appendChild(downloadAnchorNode);
+                downloadAnchorNode.click();
+                downloadAnchorNode.remove();
+                Toastify({ text: "Note exported.", duration: 2000, gravity: "top", position: "center", backgroundColor: "#6366f1" }).showToast();
+            }
+        }
+
+        /**
+         * Exports all notes as a single JSON file.
+         */
+        function exportAllNotes() {
+            const notes = loadMeetingNotes(); // Gets decompressed notes
+            if (notes.length === 0) {
+                Toastify({ text: "No notes to export.", duration: 2000, gravity: "top", position: "center", backgroundColor: "#ef4444" }).showToast();
+                return;
+            }
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(notes, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "all_meeting_notes.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+            Toastify({ text: "All notes exported.", duration: 2000, gravity: "top", position: "center", backgroundColor: "#6366f1" }).showToast();
+        }
+
+        /**
+         * Copies the polished note content to the clipboard.
+         * @param {string} noteId - The ID of the note to copy.
+         */
+        function copyPolishedNote(noteId) {
+          const notes = loadMeetingNotes();
+          const note = notes.find(n => n.id === noteId);
+          if (note && note.polishedNote) {
+            navigator.clipboard.writeText(note.polishedNote).then(() => {
+              Toastify({ text: "Polished note copied to clipboard!", duration: 2000, gravity: "top", position: "center", backgroundColor: "#6366f1" }).showToast();
+            }).catch(err => {
+              console.error("Failed to copy text: ", err);
+              Toastify({ text: "Failed to copy text.", duration: 2000, gravity: "top", position: "center", backgroundColor: "#ef4444" }).showToast();
+            });
+          } else {
+            Toastify({ text: "No polished note content to copy.", duration: 2000, gravity: "top", position: "center", backgroundColor: "#ef4444" }).showToast();
+          }
+        }
+    </script>
+    <script>
+      const MODEL_NAME = "gemini-1.5-flash";
       const polishedNote = document.getElementById("polishedNote");
       const rawTranscription = document.getElementById("rawTranscription");
       const recordBtn = document.getElementById("recordButton");
@@ -455,6 +594,8 @@
       let chunkTimer = null;
       let isChunkRecording = false;
       let chunkStream = null;
+      let currentPolishedMarkdown = '';
+
 
       function checkApiKey() {
         const apiKey = apiKeyInput.value.trim();
@@ -475,18 +616,12 @@
 
       apiKeyInput.addEventListener("input", checkApiKey);
 
-      // Function to encrypt the API key (replace with actual encryption logic)
       function encryptApiKey(apiKey) {
-        // Placeholder for encryption logic
-        console.log("Encrypting API key", apiKey);
-        return btoa(apiKey); // Basic base64 encoding as a placeholder
+        return btoa(apiKey);
       }
 
-      // Function to decrypt the API key (replace with actual decryption logic)
       function decryptApiKey(encryptedApiKey) {
-        // Placeholder for decryption logic
-        console.log("Decrypting API key", encryptedApiKey);
-        return atob(encryptedApiKey); // Basic base64 decoding as a placeholder
+        return atob(encryptedApiKey);
       }
 
       saveApiKeyButton.addEventListener("click", () => {
@@ -514,8 +649,6 @@
         }
       });
 
-      // Load API key from local storage on page load
-      // Function to copy text to clipboard
       function copyToClipboard(text) {
         navigator.clipboard.writeText(text)
           .then(() => {
@@ -546,7 +679,7 @@
         if (encryptedApiKey) {
           const decryptedApiKey = decryptApiKey(encryptedApiKey);
           apiKeyInput.value = decryptedApiKey;
-          checkApiKey(); // Update the UI based on the loaded API key
+          checkApiKey();
           Toastify({
             text: "API Key loaded and decrypted!",
             duration: 2500,
@@ -588,7 +721,6 @@
         updateTabs();
       });
 
-      // 复制按钮逻辑
       function showCopyStatus(msg) {
         copyStatus.textContent = msg;
         copyStatus.style.display = "block";
@@ -601,7 +733,7 @@
         });
       });
       copyPolishedButton.addEventListener("click", () => {
-        navigator.clipboard.writeText(polishedNote.textContent).then(() => {
+        navigator.clipboard.writeText(currentPolishedMarkdown).then(() => {
           showCopyStatus("Text copied to clipboard!");
           Toastify({ text: "Text copied to clipboard!", duration: 2000, gravity: "top", position: "center", backgroundColor: "#6366f1", stopOnFocus: true }).showToast();
         });
@@ -634,12 +766,11 @@
       }
 
       function stopWaveform() {
-        cancelAnimationFrame(animationId);
+        if(animationId) cancelAnimationFrame(animationId);
         if (audioContext) audioContext.close();
         canvasCtx.clearRect(0, 0, waveform.width, waveform.height);
       }
 
-      // Update interval from input
       intervalInput.addEventListener("change", () => {
         let val = parseInt(intervalInput.value, 10);
         if (isNaN(val) || val < 2) val = 2;
@@ -648,7 +779,6 @@
         intervalInput.value = val;
       });
 
-      // --- Sequential Chunk Recording Logic ---
       recordBtn.addEventListener("click", async () => {
         if (!checkApiKey()) {
           Toastify({
@@ -692,23 +822,18 @@
 
       function stopChunkRecording() {
         isChunkRecording = false;
-        // Stop the current chunk timer
         if (chunkTimer) clearTimeout(chunkTimer);
-        // Stop the recorder and process the last chunk if needed
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-          // When stopped, onstop will process the last chunk
           mediaRecorder.onstop = () => {
             if (audioChunks && audioChunks.length > 0) {
               processAudioChunk(new Blob(audioChunks, { type: 'audio/webm' }));
             }
-            // Clean up stream and waveform
             if (chunkStream) chunkStream.getTracks().forEach(track => track.stop());
             stopWaveform();
             waveform.style.display = "none";
           };
           mediaRecorder.stop();
         } else {
-          // If already stopped, just clean up
           if (chunkStream) chunkStream.getTracks().forEach(track => track.stop());
           stopWaveform();
           waveform.style.display = "none";
@@ -731,14 +856,12 @@
         mediaRecorder.onstop = () => {
           if (!isChunkRecording) return;
           processAudioChunk(new Blob(audioChunks, { type: 'audio/webm' }));
-          // Start next chunk if still recording
           if (isChunkRecording) {
             startNewMediaRecorderChunk();
           }
         };
 
         mediaRecorder.start();
-        // Schedule stop after chunkInterval seconds
         chunkTimer = setTimeout(() => {
           if (mediaRecorder && mediaRecorder.state === 'recording') {
             mediaRecorder.stop();
@@ -746,7 +869,7 @@
         }, chunkInterval * 1000);
       }
 
-      async function processAudioChunk(audioBlob) {
+      async function processAudioChunk(audioBlob, retryCount = 0) {
         const apiKey = apiKeyInput.value.trim();
         if (!apiKey) return;
         const reader = new FileReader();
@@ -771,26 +894,33 @@
               body: JSON.stringify(payload)
             });
             const result = await response.json();
+            if (!response.ok || result.error) {
+              throw new Error(`Gemini API error: ${result.error?.message || response.status}`);
+            }
             const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
             if (text) {
-              // Append to raw transcription
               rawTranscription.textContent += (rawTranscription.textContent ? "\n" : "") + text;
               updateTabs();
             }
           } catch (err) {
-            Toastify({
-              text: "Error processing audio chunk.",
-              duration: 2000,
-              gravity: "top",
-              position: "center",
-              backgroundColor: "#ef4444",
-              stopOnFocus: true,
-            }).showToast();
+            if (retryCount < 3) {
+              console.warn(`[processAudioChunk] Error, retrying (${retryCount + 1}/3) in 0.5s...`, err);
+              setTimeout(() => processAudioChunk(audioBlob, retryCount + 1), 500);
+            } else {
+              console.error("[processAudioChunk] Failed after 3 retries:", err);
+              Toastify({
+                text: "Error processing audio chunk after 3 retries.",
+                duration: 2000,
+                gravity: "top",
+                position: "center",
+                backgroundColor: "#ef4444",
+                stopOnFocus: true,
+              }).showToast();
+            }
           }
         };
       }
 
-      // --- Polish Button Logic ---
       polishButton.addEventListener("click", async () => {
         const apiKey = apiKeyInput.value.trim();
         const text = rawTranscription.textContent.trim();
@@ -810,33 +940,215 @@
             {
               role: "user",
               parts: [
-                { text: `Take this raw transcription and create a polished, well-formatted note.\n\n${text}` }
+                {
+                  text: `You are a highly skilled meeting assistant and language model trained to extract clarity from noisy or imperfect transcripts. I will provide you with a raw meeting transcript that may contain errors due to background noise, speech accents, or imperfect transcription tools.
+
+Strategy:
+Your carry out the work in two step, and print the result of each step:
+
+Step 1. Transcript Clean-Up
+Correct any obvious misheard words or phrases caused by background noise or strong accents. The transcript will put some "No audio" in transcript if that portion didn't contains sound. You can ignore "No audio", it is not meeting content.
+
+Ensure names, company jargon, and common phrases are interpreted sensibly.
+If a section is inaudible or unclear, mark it as [unclear].
+
+Step 2: Meeting note taking
+2.1. Structured Summary
+Under a heading called “Summary of Discussion”, group the transcript into key themes or topics. For each topic:
+Provide a concise 2–3 sentence summary.
+Identify the speakers involved if possible.
+
+2.2. Action Items
+Under a heading called “Action Items”, extract clear follow-up tasks.
+Each action item should include:
+✅ Task Description
+🧑 Responsible Person
+📅 Deadline (if any)
+🗒 Context (optional if clarification is helpful)
+
+2.3. Decisions Made
+Under a heading “Key Decisions”, list any decisions agreed upon during the meeting. Include:
+✅ What was decided
+🧑 Who agreed or led the decision
+📆 Timeframe or impact (if discussed)
+
+2.4. Open Questions
+Under a heading “Unresolved Questions”, identify any questions that were raised but not resolved.
+These could become future agenda items.
+
+If any section of the input transcript is ambiguous, use your best judgment to infer meaning—but mark speculative areas with [unclear].
+
+Output Format:
+[1] Transcript CleanUp:
+ {cleanuped Transcript content}
+
+[2]Meeting notes:
+ {The result in step 2 of meeting notes taking}
+
+Here is the raw transcript:
+
+${text}`
+                }
               ]
             }
           ]
         };
-        try {
-          const polishResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(polishPayload)
-          });
-          const polishResult = await polishResponse.json();
-          const polishText = polishResult.candidates?.[0]?.content?.parts?.[0]?.text || '[No polish result]';
-          polishedNote.innerHTML = marked.parse(polishText);
-          updateTabs();
-          tabPolished.click();
-        } catch (err) {
+
+        async function sendPolishRequest(retryCount = 0) {
+          try {
+            const polishResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(polishPayload)
+            });
+            const polishResult = await polishResponse.json();
+            if (!polishResponse.ok || polishResult.error) {
+              throw new Error(`Gemini API error: ${polishResult.error?.message || polishResponse.status}`);
+            }
+            const polishText = polishResult.candidates?.[0]?.content?.parts?.[0]?.text || '[No polish result]';
+            currentPolishedMarkdown = polishText;
+            polishedNote.innerHTML = marked.parse(polishText);
+            updateTabs();
+            tabPolished.click();
+          } catch (err) {
+            if (retryCount < 3) {
+              console.warn(`[polishButton] Error, retrying (${retryCount + 1}/3) in 0.5s...`, err);
+              setTimeout(() => sendPolishRequest(retryCount + 1), 500);
+            } else {
+              console.error("[polishButton] Failed after 3 retries:", err);
+              Toastify({
+                text: "Error polishing text after 3 retries.",
+                duration: 2000,
+                gravity: "top",
+                position: "center",
+                backgroundColor: "#ef4444",
+                stopOnFocus: true,
+              }).showToast();
+            }
+          }
+        }
+        sendPolishRequest();
+      });
+
+      function renderMeetingNotesList() {
+        const notes = loadMeetingNotes(); // This now gets decompressed notes
+        const list = document.getElementById('meetingNotesList');
+        list.innerHTML = '';
+        notes.forEach(note => {
+          const li = document.createElement('li');
+          li.className = "mb-2 flex items-center gap-2";
+          li.innerHTML = `
+            <span class="font-semibold" contenteditable="true"
+                  onblur="saveNoteTitle('${note.id}', this.textContent)"
+                  onkeydown="if (event.key === 'Enter') { this.blur(); return false; }">${note.title || '[Untitled]'}</span>
+            <button onclick="viewNote('${note.id}')" class="px-2 py-0.5 bg-green-500 text-white text-xs rounded">View</button>
+            <button onclick="copyPolishedNote('${note.id}')" class="px-2 py-0.5 bg-blue-400 text-white text-xs rounded">Copy</button>
+            <button onclick="exportNote('${note.id}')" class="px-2 py-0.5 bg-gray-400 text-white text-xs rounded">Export</button>
+            <button onclick="deleteNoteUI('${note.id}')" class="px-2 py-0.5 bg-red-500 text-xs rounded text-white">Delete</button>
+          `;
+          list.appendChild(li);
+        });
+      }
+
+      function viewNote(noteId) {
+        const notes = loadMeetingNotes();
+        const note = notes.find(n => n.id === noteId);
+        if (note && note.polishedNote) {
+            const newTab = window.open();
+            const noteContent = note.polishedNote;
+            const noteTitle = note.title || 'Meeting Note';
+            newTab.document.write(`
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <title>${noteTitle}</title>
+                <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"><\/script>
+                <link rel="preconnect" href="https://fonts.googleapis.com">
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+                <style>
+                    body { font-family: 'Inter', sans-serif; line-height: 1.7; color: #374151; background-color: #f9fafb; margin: 0; padding: 2rem; }
+                    .container { max-width: 800px; margin: 0 auto; background-color: #ffffff; padding: 2rem 3rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+                    h1, h2, h3 { color: #1f2937; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.3em; margin-top: 1.5em;}
+                    h1 { font-size: 2em;}
+                    h2 { font-size: 1.5em;}
+                    h3 { font-size: 1.25em;}
+                    code { background-color: #f3f4f6; padding: 3px 6px; border-radius: 4px; font-family: 'Courier New', Courier, monospace; }
+                    pre { background-color: #f3f4f6; padding: 1rem; border-radius: 4px; overflow-x: auto; }
+                    blockquote { border-left: 4px solid #d1d5db; padding-left: 1rem; color: #4b5563; margin-left: 0; }
+                    ul, ol { padding-left: 1.5rem; }
+                    li { margin-bottom: 0.5rem; }
+                    a { color: #3b82f6; text-decoration: none; }
+                    a:hover { text-decoration: underline; }
+                </style>
+            </head>
+            <body>
+                <div id="content" class="container"></div>
+                <script>
+                    const markdownContent = \`${noteContent.replace(/`/g, '\\`')}\`;
+                    document.getElementById('content').innerHTML = marked.parse(markdownContent);
+                <\/script>
+            </body>
+            </html>
+            `);
+            newTab.document.close();
+        } else {
+             Toastify({ text: "No polished note content to view.", duration: 2000, gravity: "top", position: "center", backgroundColor: "#ef4444", stopOnFocus: true }).showToast();
+        }
+      }
+
+      function saveNoteTitle(noteId, newTitle) {
+        const notes = loadMeetingNotes();
+        const note = notes.find(n => n.id === noteId);
+        if (note) {
+          note.title = newTitle;
+          saveAllNotes(notes); // Resave the entire collection
           Toastify({
-            text: "Error polishing text.",
+            text: "Note title updated!",
             duration: 2000,
             gravity: "top",
             position: "center",
-            backgroundColor: "#ef4444",
+            backgroundColor: "#10b981",
             stopOnFocus: true,
           }).showToast();
         }
-      });
+      }
+
+      function deleteNoteUI(noteId) {
+        if(confirm("Are you sure you want to permanently delete this note? This action cannot be undone.")){
+            deleteNote(noteId);
+            renderMeetingNotesList();
+            Toastify({
+              text: "Note deleted.",
+              duration: 2000,
+              gravity: "top",
+              position: "center",
+              backgroundColor: "#ef4444",
+              stopOnFocus: true,
+            }).showToast();
+        }
+      }
+
+      document.getElementById('exportAllNotesBtn').onclick = exportAllNotes;
+      document.getElementById('addNoteBtn').onclick = function() {
+        const now = new Date();
+        const pad = n => n.toString().padStart(2, '0');
+        const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+        const title = `${now.getFullYear()}${months[now.getMonth()]}${pad(now.getDate())}-${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+        saveOrUpdateNote({
+          id: Date.now().toString(),
+          title,
+          rawTranscript: rawTranscription.textContent || "",
+          polishedNote: currentPolishedMarkdown || "",
+          tags: [],
+          customFields: {}
+        });
+        renderMeetingNotesList();
+      };
+
+      // Initial render on page load
+      renderMeetingNotesList();
     </script>
     <script>lucide.createIcons();</script>
   </body>

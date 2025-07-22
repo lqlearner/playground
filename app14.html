@@ -593,7 +593,7 @@
         }, chunkInterval * 1000);
       }
 
-      async function processAudioChunk(audioBlob) {
+      async function processAudioChunk(audioBlob, retryCount = 0) {
         const apiKey = apiKeyInput.value.trim();
         if (!apiKey) return;
         const reader = new FileReader();
@@ -619,6 +619,10 @@
               body: JSON.stringify(payload)
             });
             const result = await response.json();
+            // Enhancement: throw if HTTP error or Gemini error
+            if (!response.ok || result.error) {
+              throw new Error(`Gemini API error: ${result.error?.message || response.status}`);
+            }
             console.log("[processAudioChunk] Gemini response:", result);
             const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
             if (text) {
@@ -627,15 +631,20 @@
               updateTabs();
             }
           } catch (err) {
-            console.error("[processAudioChunk] Error:", err);
-            Toastify({
-              text: "Error processing audio chunk.",
-              duration: 2000,
-              gravity: "top",
-              position: "center",
-              backgroundColor: "#ef4444",
-              stopOnFocus: true,
-            }).showToast();
+            if (retryCount < 3) {
+              console.warn(`[processAudioChunk] Error, retrying (${retryCount + 1}/3) in 0.5s...`, err);
+              setTimeout(() => processAudioChunk(audioBlob, retryCount + 1), 500);
+            } else {
+              console.error("[processAudioChunk] Failed after 3 retries:", err);
+              Toastify({
+                text: "Error processing audio chunk after 3 retries.",
+                duration: 2000,
+                gravity: "top",
+                position: "center",
+                backgroundColor: "#ef4444",
+                stopOnFocus: true,
+              }).showToast();
+            }
           }
         };
       }
@@ -660,35 +669,96 @@
             {
               role: "user",
               parts: [
-                { text: `Take this raw transcription and create a polished, well-formatted note.\n\n${text}` }
+                {
+                  text: `You are a highly skilled meeting assistant and language model trained to extract clarity from noisy or imperfect transcripts. I will provide you with a raw meeting transcript that may contain errors due to background noise, speech accents, or imperfect transcription tools.
+
+Strategy:
+Your carry out the work in two step, and print the result of each step:
+
+Step 1. Transcript Clean-Up
+Correct any obvious misheard words or phrases caused by background noise or strong accents. The transcript will put some "No audio" in transcript if that portion didn't contains sound. You can ignore "No audio", it is not meeting content.
+
+Ensure names, company jargon, and common phrases are interpreted sensibly.
+If a section is inaudible or unclear, mark it as [unclear].
+
+Step 2: Meeting note taking
+2.1. Structured Summary
+Under a heading called “Summary of Discussion”, group the transcript into key themes or topics. For each topic:
+Provide a concise 2–3 sentence summary.
+Identify the speakers involved if possible.
+
+2.2. Action Items
+Under a heading called “Action Items”, extract clear follow-up tasks.
+Each action item should include:
+✅ Task Description
+🧑 Responsible Person
+📅 Deadline (if any)
+🗒 Context (optional if clarification is helpful)
+
+2.3. Decisions Made
+Under a heading “Key Decisions”, list any decisions agreed upon during the meeting. Include:
+✅ What was decided
+🧑 Who agreed or led the decision
+📆 Timeframe or impact (if discussed)
+
+2.4. Open Questions
+Under a heading “Unresolved Questions”, identify any questions that were raised but not resolved.
+These could become future agenda items.
+
+If any section of the input transcript is ambiguous, use your best judgment to infer meaning—but mark speculative areas with [unclear].
+
+Output Format:
+[1] Transcript CleanUp:
+ {cleanuped Transcript content}
+
+[2]Meeting notes:
+ {The result in step 2 of meeting notes taking}
+
+Here is the raw transcript:
+
+${text}`
+                }
               ]
             }
           ]
         };
-        console.log("[polishButton] Sending polish request to Gemini:", polishPayload);
-        try {
-          const polishResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(polishPayload)
-          });
-          const polishResult = await polishResponse.json();
-          console.log("[polishButton] Gemini polish response:", polishResult);
-          const polishText = polishResult.candidates?.[0]?.content?.parts?.[0]?.text || '[No polish result]';
-          polishedNote.innerHTML = marked.parse(polishText);
-          updateTabs();
-          tabPolished.click();
-        } catch (err) {
-          console.error("[polishButton] Error:", err);
-          Toastify({
-            text: "Error polishing text.",
-            duration: 2000,
-            gravity: "top",
-            position: "center",
-            backgroundColor: "#ef4444",
-            stopOnFocus: true,
-          }).showToast();
+
+        async function sendPolishRequest(retryCount = 0) {
+          console.log("[polishButton] Sending polish request to Gemini:", polishPayload);
+          try {
+            const polishResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(polishPayload)
+            });
+            const polishResult = await polishResponse.json();
+            if (!polishResponse.ok || polishResult.error) {
+              // Throw to trigger retry logic
+              throw new Error(`Gemini API error: ${polishResult.error?.message || polishResponse.status}`);
+            }
+            console.log("[polishButton] Gemini polish response:", polishResult);
+            const polishText = polishResult.candidates?.[0]?.content?.parts?.[0]?.text || '[No polish result]';
+            polishedNote.innerHTML = marked.parse(polishText);
+            updateTabs();
+            tabPolished.click();
+          } catch (err) {
+            if (retryCount < 3) {
+              console.warn(`[polishButton] Error, retrying (${retryCount + 1}/3) in 0.5s...`, err);
+              setTimeout(() => sendPolishRequest(retryCount + 1), 500);
+            } else {
+              console.error("[polishButton] Failed after 3 retries:", err);
+              Toastify({
+                text: "Error polishing text after 3 retries.",
+                duration: 2000,
+                gravity: "top",
+                position: "center",
+                backgroundColor: "#ef4444",
+                stopOnFocus: true,
+              }).showToast();
+            }
+          }
         }
+        sendPolishRequest();
       });
     </script>
     <script>lucide.createIcons();</script>
