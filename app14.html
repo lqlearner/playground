@@ -186,165 +186,20 @@
         font-size: 13px;
       }
 
-      /* Tailwind CSS styles */
-      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-      @tailwind base;
-      @tailwind components;
-      @tailwind utilities;
-
-      /* Custom styles */
-      .container {
-        @apply mx-auto px-4;
-      }
-
-      .bg-gray-100 {
-        @apply bg-gray-100;
-      }
-
-      .min-h-screen {
-        @apply min-h-screen;
-      }
-
-      .flex {
-        @apply flex;
-      }
-
-      .items-center {
-        @apply items-center;
-      }
-
-      .justify-center {
-        @apply justify-center;
-      }
-
-      .shadow-lg {
-        @apply shadow-lg;
-      }
-
-      .rounded-lg {
-        @apply rounded-lg;
-      }
-
-      .p-6 {
-        @apply p-6;
-      }
-
-      .max-w-4xl {
-        @apply max-w-4xl;
-      }
-
-      .mb-6 {
-        @apply mb-6;
-      }
-
-      .text-2xl {
-        @apply text-2xl;
-      }
-
-      .font-bold {
-        @apply font-bold;
-      }
-
-      .text-gray-800 {
-        @apply text-gray-800;
-      }
-
-      .text-lg {
-        @apply text-lg;
-      }
-
-      .font-semibold {
-        @apply font-semibold;
-      }
-
-      .text-gray-700 {
-        @apply text-gray-700;
-      }
-
-      .space-x-2 > * {
-        @apply mr-2;
-      }
-
-      .px-4 {
-        @apply px-4;
-      }
-
-      .py-2 {
-        @apply py-2;
-      }
-
-      .bg-blue-500 {
-        @apply bg-blue-500;
-      }
-
-      .text-white {
-        @apply text-white;
-      }
-
-      .rounded-md {
-        @apply rounded-md;
-      }
-
-      .hover\:bg-blue-600:hover {
-        @apply bg-blue-600;
-      }
-
-      .w-full {
-        @apply w-full;
-      }
-
-      .h-24 {
-        @apply h-24;
-      }
-
-      .bg-gray-100 {
-        @apply bg-gray-100;
-      }
-
-      .rounded-md {
-        @apply rounded-md;
-      }
-
-      .p-4 {
-        @apply p-4;
-      }
-
-      .bg-gray-50 {
-        @apply bg-gray-50;
-      }
-
       .min-h-\[150px\] {
         min-height: 150px;
       }
-
       .relative {
         position: relative;
       }
-
-      . Owners {
+      .Owners {
         position: absolute;
       }
-
       .top-2 {
         top: 0.5rem;
       }
-
       .right-2 {
         right: 0.5rem;
-      }
-
-      .bg-red-500
-
-      .bg-red-500 {
-        @apply bg-red-500;
-      }
-
-      .hover\:bg-red-600:hover {
-        @apply bg-red-600;
-      }
-
-      .text-green.FL {
-        @apply text-green-500;
       }
 
       /* Toastify custom styles */
@@ -681,30 +536,29 @@
         isChunkRecording = false;
         if (chunkTimer) clearTimeout(chunkTimer);
 
-        // If mediaRecorder is recording, stop and process the last chunk
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-          // Save reference to current audioChunks
-          const lastChunks = audioChunks.slice();
           mediaRecorder.onstop = () => {
-            // Only process if there is data
-            if (lastChunks && lastChunks.length > 0) {
-              processAudioChunk(new Blob(lastChunks, { type: 'audio/webm' }));
+            console.log("[stopChunkRecording] MediaRecorder stopped. Processing last chunk...");
+            if (audioChunks && audioChunks.length > 0) {
+              processAudioChunk(new Blob(audioChunks, { type: 'audio/webm' }));
+              audioChunks = []; // Clear for safety
             }
-            // Clean up
             if (stream) stream.getTracks().forEach(track => track.stop());
             if (audioContext) audioContext.close();
             cancelAnimationFrame(animationId);
             waveform.style.display = "none";
             canvasCtx.clearRect(0, 0, waveform.width, waveform.height);
+            console.log("[stopChunkRecording] Cleanup complete.");
           };
+          console.log("[stopChunkRecording] Stopping MediaRecorder...");
           mediaRecorder.stop();
         } else {
-          // If already stopped, just clean up
           if (stream) stream.getTracks().forEach(track => track.stop());
           if (audioContext) audioContext.close();
           cancelAnimationFrame(animationId);
           waveform.style.display = "none";
           canvasCtx.clearRect(0, 0, waveform.width, waveform.height);
+          console.log("[stopChunkRecording] Already stopped, cleanup complete.");
         }
       }
 
@@ -757,6 +611,7 @@
               }
             ]
           };
+          console.log("[processAudioChunk] Sending request to Gemini:", payload);
           try {
             const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`, {
               method: "POST",
@@ -764,13 +619,15 @@
               body: JSON.stringify(payload)
             });
             const result = await response.json();
+            console.log("[processAudioChunk] Gemini response:", result);
             const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
             if (text) {
-              // Append to raw transcription
-              rawTranscription.textContent += (rawTranscription.textContent ? "\n" : "") + text;
+              let current = rawTranscription.innerText.trim();
+              rawTranscription.innerText = (current ? current + "\n" : "") + text;
               updateTabs();
             }
           } catch (err) {
+            console.error("[processAudioChunk] Error:", err);
             Toastify({
               text: "Error processing audio chunk.",
               duration: 2000,
@@ -808,6 +665,7 @@
             }
           ]
         };
+        console.log("[polishButton] Sending polish request to Gemini:", polishPayload);
         try {
           const polishResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`, {
             method: "POST",
@@ -815,11 +673,13 @@
             body: JSON.stringify(polishPayload)
           });
           const polishResult = await polishResponse.json();
+          console.log("[polishButton] Gemini polish response:", polishResult);
           const polishText = polishResult.candidates?.[0]?.content?.parts?.[0]?.text || '[No polish result]';
           polishedNote.innerHTML = marked.parse(polishText);
           updateTabs();
           tabPolished.click();
         } catch (err) {
+          console.error("[polishButton] Error:", err);
           Toastify({
             text: "Error polishing text.",
             duration: 2000,
