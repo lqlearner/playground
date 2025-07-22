@@ -1,0 +1,818 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dictation App</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/16.1.1/lib/marked.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <style>
+      :root {
+        --primary-color: #6366f1;
+        --accent-color: #f97316;
+        --success-color: #10b981;
+        --danger-color: #ef4444;
+        --gray-light: #f3f4f6;
+        --gray-dark: #374151;
+      }
+
+      body {
+        margin: 0;
+        font-family: 'Inter', sans-serif;
+        background: var(--gray-light);
+        color: var(--gray-dark);
+      }
+
+      .app-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: flex-start;
+        padding: 40px 24px;
+        min-height: 100vh;
+      }
+
+      .note-area {
+        background: #fff;
+        border-radius: 16px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        max-width: 960px;
+        width: 100%;
+        padding: 32px;
+        margin-bottom: 32px;
+      }
+
+      .editor-title {
+        font-size: 2rem;
+        font-weight: 600;
+        border: none;
+        padding: 16px;
+        background: #f1f5f9;
+        border-radius: 12px;
+        margin-bottom: 24px;
+      }
+
+      .tab-navigation {
+        display: flex;
+        border-bottom: 2px solid #e5e7eb;
+        margin-bottom: 12px;
+      }
+
+      .tab-button {
+        flex: 1;
+        padding: 12px;
+        font-weight: 500;
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: #6b7280;
+        transition: all 0.3s;
+        position: relative;
+      }
+
+      .tab-button.active {
+        color: var(--primary-color);
+        font-weight: 600;
+      }
+
+      .tab-button.active::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        height: 3px;
+        background-color: var(--primary-color);
+      }
+
+      .note-content-wrapper {
+        display: flex;
+        flex-direction: column;
+      }
+
+      .note-content {
+        display: none;
+        background: #f9fafb;
+        border: 1px solid #e5e7eb;
+        padding: 20px;
+        border-radius: 12px;
+        min-height: 260px;
+        white-space: pre-wrap;
+        max-height: calc(1.5em * 20); /* 1.5em line-height × 20 lines */
+        overflow-y: auto;
+        line-height: 1.5em;
+      }
+
+      .note-content.active {
+        display: block;
+      }
+
+      .note-content-wrapper > div > button {
+        display: none;
+      }
+
+      .recording-interface {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        flex-wrap: wrap;
+        margin-top: 24px;
+      }
+
+      .record-button {
+        background-color: var(--danger-color);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 12px;
+        font-size: 16px;
+        cursor: pointer;
+        transition: background 0.3s ease;
+      }
+
+      .record-button:hover {
+        background-color: #dc2626;
+      }
+
+      .record-button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .api-key-input {
+        width: 100%;
+        max-width: 480px;
+        padding: 12px;
+        font-size: 14px;
+        border-radius: 10px;
+        border: 1px solid #d1d5db;
+        background-color: #fff;
+      }
+
+      #saveApiKeyButton {
+        background-color: var(--success-color);
+        margin-left: 12px;
+        padding: 12px 20px;
+        border-radius: 10px;
+        font-weight: 500;
+      }
+
+      #saveApiKeyButton:hover {
+        background-color: #059669;
+      }
+
+      #waveform {
+        width: 100%;
+        height: 60px;
+        background: #e5e7eb;
+        border-radius: 12px;
+        margin-top: 24px;
+      }
+
+      .debug-panel {
+        margin-top: 20px;
+        color: #9ca3af;
+        font-size: 13px;
+      }
+
+      #apiKeyReminder {
+        color: #9ca3af;
+        font-style: italic;
+        font-size: 13px;
+      }
+
+      /* Tailwind CSS styles */
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+      @tailwind base;
+      @tailwind components;
+      @tailwind utilities;
+
+      /* Custom styles */
+      .container {
+        @apply mx-auto px-4;
+      }
+
+      .bg-gray-100 {
+        @apply bg-gray-100;
+      }
+
+      .min-h-screen {
+        @apply min-h-screen;
+      }
+
+      .flex {
+        @apply flex;
+      }
+
+      .items-center {
+        @apply items-center;
+      }
+
+      .justify-center {
+        @apply justify-center;
+      }
+
+      .shadow-lg {
+        @apply shadow-lg;
+      }
+
+      .rounded-lg {
+        @apply rounded-lg;
+      }
+
+      .p-6 {
+        @apply p-6;
+      }
+
+      .max-w-4xl {
+        @apply max-w-4xl;
+      }
+
+      .mb-6 {
+        @apply mb-6;
+      }
+
+      .text-2xl {
+        @apply text-2xl;
+      }
+
+      .font-bold {
+        @apply font-bold;
+      }
+
+      .text-gray-800 {
+        @apply text-gray-800;
+      }
+
+      .text-lg {
+        @apply text-lg;
+      }
+
+      .font-semibold {
+        @apply font-semibold;
+      }
+
+      .text-gray-700 {
+        @apply text-gray-700;
+      }
+
+      .space-x-2 > * {
+        @apply mr-2;
+      }
+
+      .px-4 {
+        @apply px-4;
+      }
+
+      .py-2 {
+        @apply py-2;
+      }
+
+      .bg-blue-500 {
+        @apply bg-blue-500;
+      }
+
+      .text-white {
+        @apply text-white;
+      }
+
+      .rounded-md {
+        @apply rounded-md;
+      }
+
+      .hover\:bg-blue-600:hover {
+        @apply bg-blue-600;
+      }
+
+      .w-full {
+        @apply w-full;
+      }
+
+      .h-24 {
+        @apply h-24;
+      }
+
+      .bg-gray-100 {
+        @apply bg-gray-100;
+      }
+
+      .rounded-md {
+        @apply rounded-md;
+      }
+
+      .p-4 {
+        @apply p-4;
+      }
+
+      .bg-gray-50 {
+        @apply bg-gray-50;
+      }
+
+      .min-h-\[150px\] {
+        min-height: 150px;
+      }
+
+      .relative {
+        position: relative;
+      }
+
+      . Owners {
+        position: absolute;
+      }
+
+      .top-2 {
+        top: 0.5rem;
+      }
+
+      .right-2 {
+        right: 0.5rem;
+      }
+
+      .bg-red-500
+
+      .bg-red-500 {
+        @apply bg-red-500;
+      }
+
+      .hover\:bg-red-600:hover {
+        @apply bg-red-600;
+      }
+
+      .text-green.FL {
+        @apply text-green-500;
+      }
+
+      /* Toastify custom styles */
+      .toastify {
+        font-family: 'Inter', sans-serif;
+      }
+    </style>
+  </head>
+  <body class="bg-gray-100 min-h-screen flex items-center justify-center">
+    <div class="container mx-auto p-4">
+      <div class="bg-white shadow-lg rounded-lg p-6 max-w-4xl mx-auto">
+        <h1 class="text-2xl font-bold text-gray-800 mb-6">Dictation App</h1>
+        <!-- API Key Management -->
+        <div class="mb-6">
+          <h2 class="text-lg font-semibold text-gray-700 mb-2">API Key Management</h2>
+          <div class="flex space-x-2">
+            <input id="apiKeyInput" type="password" placeholder="Enter Google Gemini API Key"
+              class="flex-1 p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <button id="saveApiKeyButton"
+              class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600">Save Key</button>
+          </div>
+          <p id="apiKeyReminder" style="display:none;" class="text-sm text-gray-400 mt-1">Please enter your API Key to enable recording.</p>
+        </div>
+        <!-- Recording Module -->
+        <div class="mb-6">
+          <h2 class="text-lg font-semibold text-gray-700 mb-2">Record Screen Audio</h2>
+          <div class="flex space-x-4 mb-4">
+            <button id="recordButton"
+              class="px-4 py-2 rounded-md text-white bg-blue-500 hover:bg-blue-600">Start Screen Share</button>
+            <button id="stopButton"
+              class="px-4 py-2 rounded-md text-white bg-red-500 hover:bg-red-600" style="display:none;">Stop Recording</button>
+            <div class="flex items-center space-x-2">
+              <label for="intervalInput" class="text-sm text-gray-700">Chunk (sec):</label>
+              <input id="intervalInput" type="number" min="2" max="60" value="10" class="w-16 p-1 border rounded text-sm" />
+            </div>
+          </div>
+          <canvas id="waveform" class="w-full h-24 bg-gray-100 rounded-md" style="display:none;"></canvas>
+        </div>
+        <!-- Transcription View -->
+        <div>
+          <h2 class="text-lg font-semibold text-gray-700 mb-2">Transcription</h2>
+          <div class="flex space-x-4 mb-4">
+            <button id="tabRaw"
+              class="px-4 py-2 rounded-md bg-blue-500 text-white">Raw</button>
+            <button id="tabPolished"
+              class="px-4 py-2 rounded-md bg-gray-200 text-gray-700">Polished</button>
+            <button id="polishButton"
+              class="px-4 py-2 rounded-md bg-orange-500 text-white hover:bg-orange-600">Polish</button>
+          </div>
+          <div class="p-4 bg-gray-50 rounded-md min-h-[150px] relative">
+            <div id="rawTranscription" class="note-content" contenteditable="true" style="display:block;"></div>
+            <button id="copyRaw"
+              class="absolute top-2 right-2 px-1.5 py-0.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600" style="display:none;">Copy</button>
+            <div id="polishedNote" class="note-content" contenteditable="true" style="display:none;"></div>
+            <button id="copyPolished"
+              class="absolute top-2 right-2 px-1.5 py-0.5 text-xs bg-blue-500 text-white rounded hover:bg-blue-600" style="display:none;">Copy</button>
+          </div>
+          <p id="copyStatus" class="text-green-500 mt-2" style="display:none;"></p>
+        </div>
+      </div>
+    </div>
+    <!-- Toastify, lucide, marked, and your JS logic remain unchanged -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/16.1.1/lib/marked.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script>
+      const MODEL_NAME = "gemini-2.0-flash";
+      const polishedNote = document.getElementById("polishedNote");
+      const rawTranscription = document.getElementById("rawTranscription");
+      const recordBtn = document.getElementById("recordButton");
+      const stopBtn = document.getElementById("stopButton");
+      const waveform = document.getElementById("waveform");
+      const canvasCtx = waveform.getContext("2d");
+      const apiKeyInput = document.getElementById("apiKeyInput");
+      const saveApiKeyButton = document.getElementById("saveApiKeyButton");
+      const copyPolishedButton = document.getElementById("copyPolished");
+      const copyRawButton = document.getElementById("copyRaw");
+      const tabRaw = document.getElementById("tabRaw");
+      const tabPolished = document.getElementById("tabPolished");
+      const copyStatus = document.getElementById("copyStatus");
+      const intervalInput = document.getElementById("intervalInput");
+      const polishButton = document.getElementById("polishButton");
+
+      let mediaRecorder;
+      let audioChunks = [];
+      let audioContext;
+      let analyserNode;
+      let source;
+      let stream;
+      let animationId;
+      let chunkInterval = 10; // seconds
+      let chunkTimer = null;
+      let isChunkRecording = false;
+
+      function checkApiKey() {
+        const apiKey = apiKeyInput.value.trim();
+        if (!apiKey) {
+          recordBtn.disabled = true;
+          recordBtn.textContent = "Enter API Key First";
+          recordBtn.style.backgroundColor = "gray";
+          apiKeyReminder.style.display = "inline";
+          return false;
+        } else {
+          recordBtn.disabled = false;
+          recordBtn.textContent = "Start Screen Share";
+          recordBtn.style.backgroundColor = "#3b82f6";
+          apiKeyReminder.style.display = "none";
+          return true;
+        }
+      }
+
+      apiKeyInput.addEventListener("input", checkApiKey);
+
+      // Function to encrypt the API key (replace with actual encryption logic)
+      function encryptApiKey(apiKey) {
+        // Placeholder for encryption logic
+        console.log("Encrypting API key", apiKey);
+        return btoa(apiKey); // Basic base64 encoding as a placeholder
+      }
+
+      // Function to decrypt the API key (replace with actual decryption logic)
+      function decryptApiKey(encryptedApiKey) {
+        // Placeholder for decryption logic
+        console.log("Decrypting API key", encryptedApiKey);
+        return atob(encryptedApiKey); // Basic base64 decoding as a placeholder
+      }
+
+      saveApiKeyButton.addEventListener("click", () => {
+        const apiKey = apiKeyInput.value.trim();
+        if (apiKey) {
+          const encryptedApiKey = encryptApiKey(apiKey);
+          localStorage.setItem("Dict_BARKEY", encryptedApiKey);
+          Toastify({
+            text: "API Key saved and encrypted!",
+            duration: 2500,
+            gravity: "top",
+            position: "center",
+            backgroundColor: "#10b981",
+            stopOnFocus: true,
+          }).showToast();
+        } else {
+          Toastify({
+            text: "Please enter an API key to save.",
+            duration: 2500,
+            gravity: "top",
+            position: "center",
+            backgroundColor: "#ef4444",
+            stopOnFocus: true,
+          }).showToast();
+        }
+      });
+
+      // Load API key from local storage on page load
+      // Function to copy text to clipboard
+      function copyToClipboard(text) {
+        navigator.clipboard.writeText(text)
+          .then(() => {
+            Toastify({
+              text: "Text copied to clipboard!",
+              duration: 2000,
+              gravity: "top",
+              position: "center",
+              backgroundColor: "#6366f1",
+              stopOnFocus: true, 
+            }).showToast();
+          })
+          .catch(err => {
+            console.error("Failed to copy text: ", err);
+            Toastify({
+              text: "Failed to copy text to clipboard.",
+              duration: 2000,
+              gravity: "top",
+              position: "center",
+              backgroundColor: "#ef4444",
+              stopOnFocus: true,
+            }).showToast();
+          });
+      }
+
+      window.addEventListener("load", () => {
+        const encryptedApiKey = localStorage.getItem("Dict_BARKEY");
+        if (encryptedApiKey) {
+          const decryptedApiKey = decryptApiKey(encryptedApiKey);
+          apiKeyInput.value = decryptedApiKey;
+          checkApiKey(); // Update the UI based on the loaded API key
+          Toastify({
+            text: "API Key loaded and decrypted!",
+            duration: 2500,
+            gravity: "top",
+            position: "center",
+            backgroundColor: "#6366f1",
+            stopOnFocus: true,
+          }).showToast();
+        }
+      });
+
+      function updateTabs() {
+        if (tabRaw.classList.contains("bg-blue-500")) {
+          rawTranscription.style.display = "block";
+          copyRawButton.style.display = rawTranscription.textContent.trim() ? "block" : "none";
+          polishedNote.style.display = "none";
+          copyPolishedButton.style.display = "none";
+        } else {
+          rawTranscription.style.display = "none";
+          copyRawButton.style.display = "none";
+          polishedNote.style.display = "block";
+          copyPolishedButton.style.display = polishedNote.textContent.trim() ? "block" : "none";
+        }
+      }
+
+      tabRaw.addEventListener("click", () => {
+        tabRaw.classList.add("bg-blue-500", "text-white");
+        tabRaw.classList.remove("bg-gray-200", "text-gray-700");
+        tabPolished.classList.remove("bg-blue-500", "text-white");
+        tabPolished.classList.add("bg-gray-200", "text-gray-700");
+        updateTabs();
+      });
+
+      tabPolished.addEventListener("click", () => {
+        tabPolished.classList.add("bg-blue-500", "text-white");
+        tabPolished.classList.remove("bg-gray-200", "text-gray-700");
+        tabRaw.classList.remove("bg-blue-500", "text-white");
+        tabRaw.classList.add("bg-gray-200", "text-gray-700");
+        updateTabs();
+      });
+
+      // 复制按钮逻辑
+      function showCopyStatus(msg) {
+        copyStatus.textContent = msg;
+        copyStatus.style.display = "block";
+        setTimeout(() => copyStatus.style.display = "none", 2000);
+      }
+      copyRawButton.addEventListener("click", () => {
+        navigator.clipboard.writeText(rawTranscription.textContent).then(() => {
+          showCopyStatus("Text copied to clipboard!");
+          Toastify({ text: "Text copied to clipboard!", duration: 2000, gravity: "top", position: "center", backgroundColor: "#6366f1", stopOnFocus: true }).showToast();
+        });
+      });
+      copyPolishedButton.addEventListener("click", () => {
+        navigator.clipboard.writeText(polishedNote.textContent).then(() => {
+          showCopyStatus("Text copied to clipboard!");
+          Toastify({ text: "Text copied to clipboard!", duration: 2000, gravity: "top", position: "center", backgroundColor: "#6366f1", stopOnFocus: true }).showToast();
+        });
+      });
+
+      function drawWaveform() {
+        analyserNode.getByteTimeDomainData(dataArray);
+        canvasCtx.fillStyle = "#e5e7eb";
+        canvasCtx.fillRect(0, 0, waveform.width, waveform.height);
+        canvasCtx.lineWidth = 2;
+        canvasCtx.strokeStyle = "#6366f1";
+        canvasCtx.beginPath();
+
+        const sliceWidth = waveform.width / dataArray.length;
+        let x = 0;
+
+        for (let i = 0; i < dataArray.length; i++) {
+          const v = dataArray[i] / 128.0;
+          const y = (v * waveform.height) / 2;
+
+          if (i === 0) {
+            canvasCtx.moveTo(x, y);
+          } else {
+            canvasCtx.lineTo(x, y);
+          }
+
+          x += sliceWidth;
+        }
+
+        canvasCtx.lineTo(waveform.width, waveform.height / 2);
+        canvasCtx.stroke();
+        animationId = requestAnimationFrame(drawWaveform);
+      }
+
+      // Update interval from input
+      intervalInput.addEventListener("change", () => {
+        let val = parseInt(intervalInput.value, 10);
+        if (isNaN(val) || val < 2) val = 2;
+        if (val > 60) val = 60;
+        chunkInterval = val;
+        intervalInput.value = val;
+      });
+
+      // --- Chunked Recording Logic ---
+      recordBtn.addEventListener("click", async () => {
+        if (!checkApiKey()) return;
+        if (isChunkRecording) return;
+
+        try {
+          const displayStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+          stream = new MediaStream(displayStream.getAudioTracks());
+          displayStream.getVideoTracks().forEach((track) => track.stop()); // Stop video tracks to save resources
+          startChunkRecording();
+          recordBtn.style.display = "none";
+          stopBtn.style.display = "inline-block";
+        } catch (err) {
+          Toastify({
+            text: "Could not access screen share. Ensure audio sharing is enabled.",
+            duration: 3000,
+            gravity: "top",
+            position: "center",
+            backgroundColor: "#ef4444",
+            stopOnFocus: true,
+          }).showToast();
+        }
+      });
+
+      stopBtn.addEventListener("click", () => {
+        stopChunkRecording();
+        recordBtn.style.display = "inline-block";
+        stopBtn.style.display = "none";
+      });
+
+      function startChunkRecording() {
+        isChunkRecording = true;
+        waveform.style.display = "block";
+        waveform.width = waveform.offsetWidth;
+        waveform.height = waveform.offsetHeight;
+
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        source = audioContext.createMediaStreamSource(stream);
+        analyserNode = audioContext.createAnalyser();
+        analyserNode.fftSize = 2048;
+        dataArray = new Uint8Array(analyserNode.fftSize);
+        source.connect(analyserNode);
+        drawWaveform();
+
+        startNewMediaRecorderChunk();
+      }
+
+      function stopChunkRecording() {
+        isChunkRecording = false;
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          mediaRecorder.stop();
+        }
+        if (chunkTimer) clearTimeout(chunkTimer);
+        if (stream) stream.getTracks().forEach(track => track.stop());
+        if (audioContext) audioContext.close();
+        cancelAnimationFrame(animationId);
+        waveform.style.display = "none";
+        canvasCtx.clearRect(0, 0, waveform.width, waveform.height);
+      }
+
+      function startNewMediaRecorderChunk() {
+        audioChunks = [];
+        let mimeType = 'audio/webm';
+        if (!MediaRecorder.isTypeSupported(mimeType)) {
+          mimeType = '';
+        }
+        const options = mimeType ? { mimeType } : {};
+        mediaRecorder = new MediaRecorder(stream, options);
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) audioChunks.push(event.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          if (!isChunkRecording) return;
+          processAudioChunk(new Blob(audioChunks, { type: 'audio/webm' }));
+          // Start next chunk if still recording
+          if (isChunkRecording) {
+            startNewMediaRecorderChunk();
+          }
+        };
+
+        mediaRecorder.start();
+        // Schedule stop after chunkInterval seconds
+        chunkTimer = setTimeout(() => {
+          if (mediaRecorder && mediaRecorder.state === 'recording') {
+            mediaRecorder.stop();
+          }
+        }, chunkInterval * 1000);
+      }
+
+      async function processAudioChunk(audioBlob) {
+        const apiKey = apiKeyInput.value.trim();
+        if (!apiKey) return;
+        const reader = new FileReader();
+        reader.readAsDataURL(audioBlob);
+        reader.onloadend = async () => {
+          const base64 = reader.result.split(',')[1];
+          const payload = {
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  { text: "Generate a complete, detailed transcript of this audio. If no audio content detect, just reply 'No audio'." },
+                  { inlineData: { mimeType: "audio/webm", data: base64 } }
+                ]
+              }
+            ]
+          };
+          try {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            const text = result.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            if (text) {
+              // Append to raw transcription
+              rawTranscription.textContent += (rawTranscription.textContent ? "\n" : "") + text;
+              updateTabs();
+            }
+          } catch (err) {
+            Toastify({
+              text: "Error processing audio chunk.",
+              duration: 2000,
+              gravity: "top",
+              position: "center",
+              backgroundColor: "#ef4444",
+              stopOnFocus: true,
+            }).showToast();
+          }
+        };
+      }
+
+      // --- Polish Button Logic ---
+      polishButton.addEventListener("click", async () => {
+        const apiKey = apiKeyInput.value.trim();
+        const text = rawTranscription.textContent.trim();
+        if (!apiKey || !text) {
+          Toastify({
+            text: "No raw text to polish.",
+            duration: 2000,
+            gravity: "top",
+            position: "center",
+            backgroundColor: "#ef4444",
+            stopOnFocus: true,
+          }).showToast();
+          return;
+        }
+        const polishPayload = {
+          contents: [
+            {
+              role: "user",
+              parts: [
+                { text: `Take this raw transcription and create a polished, well-formatted note.\n\n${text}` }
+              ]
+            }
+          ]
+        };
+        try {
+          const polishResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${apiKey}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(polishPayload)
+          });
+          const polishResult = await polishResponse.json();
+          const polishText = polishResult.candidates?.[0]?.content?.parts?.[0]?.text || '[No polish result]';
+          polishedNote.innerHTML = marked.parse(polishText);
+          updateTabs();
+          tabPolished.click();
+        } catch (err) {
+          Toastify({
+            text: "Error polishing text.",
+            duration: 2000,
+            gravity: "top",
+            position: "center",
+            backgroundColor: "#ef4444",
+            stopOnFocus: true,
+          }).showToast();
+        }
+      });
+    </script>
+    <script>lucide.createIcons();</script>
+  </body>
+</html>
