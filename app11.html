@@ -652,7 +652,11 @@
           stopBtn.style.display = "inline-block";
         } catch (err) {
           console.error("Error accessing screen or microphone", err);
-          alert("Could not access screen or microphone.");
+          if (err.name === "NotAllowedError") {
+            alert("Screen recording or microphone access was denied. Please enable it in Settings > Privacy > Microphone/Screen Recording > Chrome.");
+          } else {
+            alert("Could not access screen or microphone.");
+          }
         }
       });
 
