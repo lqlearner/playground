@@ -846,6 +846,7 @@
         if (!MediaRecorder.isTypeSupported(mimeType)) {
           mimeType = 'audio/webm';
         }
+        console.log("[MediaRecorder] Using mimeType:", mimeType); // <-- Added log
         const options = { mimeType };
         mediaRecorder = new MediaRecorder(chunkStream, options);
 
@@ -855,7 +856,7 @@
 
         mediaRecorder.onstop = () => {
           if (!isChunkRecording) return;
-          processAudioChunk(new Blob(audioChunks, { type: 'audio/webm' }));
+          processAudioChunkIfNotSilent(new Blob(audioChunks, { type: 'audio/webm' }));
           if (isChunkRecording) {
             startNewMediaRecorderChunk();
           }
