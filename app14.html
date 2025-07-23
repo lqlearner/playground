@@ -674,7 +674,7 @@
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
           mediaRecorder.onstop = () => {
             if (audioChunks && audioChunks.length > 0) {
-              processAudioChunk(new Blob(audioChunks, { type: 'audio/webm' }));
+              processAudioChunkIfNotSilent(new Blob(audioChunks, { type: 'audio/webm' }));
               audioChunks = [];
             }
             if (stream) stream.getTracks().forEach(track => track.stop());
@@ -708,7 +708,7 @@
 
         mediaRecorder.onstop = () => {
           if (!isChunkRecording) return;
-          processAudioChunk(new Blob(audioChunks, { type: 'audio/webm' }));
+          processAudioChunkIfNotSilent(new Blob(audioChunks, { type: 'audio/webm' }));
           if (isChunkRecording) {
             startNewMediaRecorderChunk();
           }
@@ -1004,6 +1004,41 @@ ${text}`
         renderMeetingNotesList();
       };
 
+      function isSilent(audioBuffer, threshold = 0.01) {
+        // audioBuffer is a Float32Array
+        let sum = 0;
+        for (let i = 0; i < audioBuffer.length; i++) {
+          sum += audioBuffer[i] * audioBuffer[i];
+        }
+        const rms = Math.sqrt(sum / audioBuffer.length);
+        return rms < threshold;
+      }
+
+      function processAudioChunkIfNotSilent(audioBlob) {
+        // Use Web Audio API to decode and check for silence
+        const reader = new FileReader();
+        reader.onloadend = function() {
+          const arrayBuffer = reader.result;
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          ctx.decodeAudioData(arrayBuffer, (audioBuffer) => {
+            // Use only the first channel for silence detection
+            const channelData = audioBuffer.getChannelData(0);
+            if (isSilent(channelData)) {
+              console.log("[processAudioChunkIfNotSilent] Skipped silent chunk.");
+              ctx.close();
+              return;
+            }
+            ctx.close();
+            processAudioChunk(audioBlob);
+          }, (err) => {
+            // If decoding fails, send anyway
+            console.warn("[processAudioChunkIfNotSilent] decodeAudioData failed, sending anyway.", err);
+            processAudioChunk(audioBlob);
+            ctx.close();
+          });
+        };
+        reader.readAsArrayBuffer(audioBlob);
+      }
     </script>
     <script>lucide.createIcons();</script>
   </body>
