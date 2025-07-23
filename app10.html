@@ -842,11 +842,11 @@
 
       function startNewMediaRecorderChunk() {
         audioChunks = [];
-        let mimeType = 'audio/webm';
+        let mimeType = 'audio/webm;codecs=opus';
         if (!MediaRecorder.isTypeSupported(mimeType)) {
-          mimeType = '';
+          mimeType = 'audio/webm';
         }
-        const options = mimeType ? { mimeType } : {};
+        const options = { mimeType };
         mediaRecorder = new MediaRecorder(chunkStream, options);
 
         mediaRecorder.ondataavailable = (event) => {
@@ -881,7 +881,7 @@
               {
                 role: "user",
                 parts: [
-                  { text: "Generate a complete, detailed transcript of this audio." },
+                  { text: "Generate a complete, detailed transcript of this audio. If no audio content is detected, just reply 'No audio'." },
                   { inlineData: { mimeType: "audio/webm", data: base64 } }
                 ]
               }
@@ -959,7 +959,7 @@ Provide a concise 2–3 sentence summary.
 Identify the speakers involved if possible.
 
 2.2. Action Items
-Under a heading called “Action Items”, extract clear follow-up tasks.
+Under a heading “Action Items”, extract clear follow-up tasks.
 Each action item should include:
 ✅ Task Description
 🧑 Responsible Person
