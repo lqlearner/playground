@@ -597,19 +597,26 @@
       let currentPolishedMarkdown = '';
 
 
+      let apiKeys = [];
+      let apiKeyIndex = 0;
+
       function checkApiKey() {
-        const apiKey = apiKeyInput.value.trim();
-        if (!apiKey) {
+        const apiKeyRaw = apiKeyInput.value.trim();
+        if (!apiKeyRaw) {
           recordBtn.disabled = true;
           recordBtn.textContent = "Enter API Key First";
           recordBtn.style.backgroundColor = "gray";
           apiKeyReminder.style.display = "inline";
+          apiKeys = [];
           return false;
         } else {
           recordBtn.disabled = false;
           recordBtn.textContent = "Start Recording";
           recordBtn.style.backgroundColor = "#dc3545";
           apiKeyReminder.style.display = "none";
+          // Split by comma, trim, and filter out empty keys
+          apiKeys = apiKeyRaw.split(",").map(k => k.trim()).filter(Boolean);
+          apiKeyIndex = 0;
           return true;
         }
       }
@@ -870,8 +877,43 @@
         }, chunkInterval * 1000);
       }
 
+      // --- Enhance checkApiKey to support multiple keys ---
+      function checkApiKey() {
+        const apiKeyRaw = apiKeyInput.value.trim();
+        if (!apiKeyRaw) {
+          recordBtn.disabled = true;
+          recordBtn.textContent = "Enter API Key First";
+          recordBtn.style.backgroundColor = "gray";
+          apiKeyReminder.style.display = "inline";
+          apiKeys = [];
+          return false;
+        } else {
+          recordBtn.disabled = false;
+          recordBtn.textContent = "Start Recording";
+          recordBtn.style.backgroundColor = "#dc3545";
+          apiKeyReminder.style.display = "none";
+          // Split by comma, trim, and filter out empty keys
+          apiKeys = apiKeyRaw.split(",").map(k => k.trim()).filter(Boolean);
+          apiKeyIndex = 0;
+          return true;
+        }
+      }
+
+      apiKeyInput.addEventListener("input", checkApiKey);
+
+      // --- Helper to get next API key in round robin ---
+      function getNextApiKey() {
+        if (!apiKeys.length) return "";
+        const key = apiKeys[apiKeyIndex];
+        apiKeyIndex = (apiKeyIndex + 1) % apiKeys.length;
+        console.log("[Gemini API] Using key:", key);
+        return key;
+      }
+
+      // --- Update processAudioChunk to use getNextApiKey ---
       async function processAudioChunk(audioBlob, retryCount = 0) {
-        const apiKey = apiKeyInput.value.trim();
+        if (!apiKeys.length) return;
+        const apiKey = getNextApiKey();
         if (!apiKey) return;
         const reader = new FileReader();
         reader.readAsDataURL(audioBlob);
@@ -922,33 +964,20 @@
         };
       }
 
-      function processAudioChunkIfNotSilent(audioBlob) {
-        const reader = new FileReader();
-        reader.onloadend = function() {
-          const arrayBuffer = reader.result;
-          const ctx = new (window.AudioContext || window.webkitAudioContext)();
-          ctx.decodeAudioData(arrayBuffer, (audioBuffer) => {
-            // Use only the first channel for silence detection
-            const channelData = audioBuffer.getChannelData(0);
-            if (isSilent(channelData)) {
-              console.log("[processAudioChunkIfNotSilent] Skipped silent chunk.");
-              ctx.close();
-              return;
-            }
-            ctx.close();
-            processAudioChunk(audioBlob);
-          }, (err) => {
-            // If decoding fails, send anyway
-            console.warn("[processAudioChunkIfNotSilent] decodeAudioData failed, sending anyway.", err);
-            processAudioChunk(audioBlob);
-            ctx.close();
-          });
-        };
-        reader.readAsArrayBuffer(audioBlob);
-      }
-
+      // --- Update polishButton logic to use getNextApiKey ---
       polishButton.addEventListener("click", async () => {
-        const apiKey = apiKeyInput.value.trim();
+        if (!apiKeys.length) {
+          Toastify({
+            text: "No API key(s) provided.",
+            duration: 2000,
+            gravity: "top",
+            position: "center",
+            backgroundColor: "#ef4444",
+            stopOnFocus: true,
+          }).showToast();
+          return;
+        }
+        const apiKey = getNextApiKey();
         const text = rawTranscription.textContent.trim();
         if (!apiKey || !text) {
           Toastify({
@@ -1005,7 +1034,7 @@ These could become future agenda items.
 If any section of the input transcript is ambiguous, use your best judgment to infer meaning—but mark speculative areas with [unclear].
 
 Output Format:
-[1] Transcript CleanUp:
+[1] Transcript Clean-Up
  {cleanuped Transcript content}
 
 [2]Meeting notes:
@@ -1186,6 +1215,31 @@ ${text}`
         const rms = Math.sqrt(sum / audioBuffer.length);
         return rms < threshold;
       }      
+
+      function processAudioChunkIfNotSilent(audioBlob) {
+        const reader = new FileReader();
+        reader.onloadend = function() {
+          const arrayBuffer = reader.result;
+          const ctx = new (window.AudioContext || window.webkitAudioContext)();
+          ctx.decodeAudioData(arrayBuffer, (audioBuffer) => {
+            // Use only the first channel for silence detection
+            const channelData = audioBuffer.getChannelData(0);
+            if (isSilent(channelData)) {
+              console.log("[processAudioChunkIfNotSilent] Skipped silent chunk.");
+              ctx.close();
+              return;
+            }
+            ctx.close();
+            processAudioChunk(audioBlob);
+          }, (err) => {
+            // If decoding fails, send anyway
+            console.warn("[processAudioChunkIfNotSilent] decodeAudioData failed, sending anyway.", err);
+            processAudioChunk(audioBlob);
+            ctx.close();
+          });
+        };
+        reader.readAsArrayBuffer(audioBlob);
+      }
     </script>
     <script>lucide.createIcons();</script>
   </body>

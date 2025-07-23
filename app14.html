@@ -440,19 +440,27 @@
       let isChunkRecording = false;
       let currentPolishedMarkdown = ''; // ADDED: To hold polished text for saving
 
+      // --- Add these variables at the top of your script section ---
+      let apiKeys = [];
+      let apiKeyIndex = 0;
+
       function checkApiKey() {
-        const apiKey = apiKeyInput.value.trim();
-        if (!apiKey) {
+        const apiKeyRaw = apiKeyInput.value.trim();
+        if (!apiKeyRaw) {
           recordBtn.disabled = true;
           recordBtn.textContent = "Enter API Key First";
           recordBtn.style.backgroundColor = "gray";
           apiKeyReminder.style.display = "inline";
+          apiKeys = [];
           return false;
         } else {
           recordBtn.disabled = false;
           recordBtn.textContent = "Start Screen Share";
           recordBtn.style.backgroundColor = "#3b82f6";
           apiKeyReminder.style.display = "none";
+          // Split by comma, trim, and filter out empty keys
+          apiKeys = apiKeyRaw.split(",").map(k => k.trim()).filter(Boolean);
+          apiKeyIndex = 0;
           return true;
         }
       }
@@ -722,8 +730,10 @@
         }, chunkInterval * 1000);
       }
 
+      // --- Enhanced processAudioChunk with round-robin API key support ---
       async function processAudioChunk(audioBlob, retryCount = 0) {
-        const apiKey = apiKeyInput.value.trim();
+        if (!apiKeys.length) return;
+        const apiKey = getNextApiKey();
         if (!apiKey) return;
         const reader = new FileReader();
         reader.readAsDataURL(audioBlob);
@@ -777,7 +787,18 @@
 
       // --- Polish Button Logic (MERGED) ---
       polishButton.addEventListener("click", async () => {
-        const apiKey = apiKeyInput.value.trim();
+        if (!apiKeys.length) {
+          Toastify({
+            text: "No API key(s) provided.",
+            duration: 2000,
+            gravity: "top",
+            position: "center",
+            backgroundColor: "#ef4444",
+            stopOnFocus: true,
+          }).showToast();
+          return;
+        }
+        const apiKey = getNextApiKey();
         const text = rawTranscription.textContent.trim();
         if (!apiKey || !text) {
           Toastify({
@@ -814,7 +835,7 @@ Provide a concise 2–3 sentence summary.
 Identify the speakers involved if possible.
 
 2.2. Action Items
-Under a heading called “Action Items”, extract clear follow-up tasks.
+Under a heading “Action Items”, extract clear follow-up tasks.
 Each action item should include:
 ✅ Task Description
 🧑 Responsible Person
@@ -834,7 +855,7 @@ These could become future agenda items.
 If any section of the input transcript is ambiguous, use your best judgment to infer meaning—but mark speculative areas with [unclear].
 
 Output Format:
-[1] Transcript CleanUp:
+[1] Transcript Clean-Up
  {cleanuped Transcript content}
 
 [2]Meeting notes:
@@ -1038,6 +1059,14 @@ ${text}`
           });
         };
         reader.readAsArrayBuffer(audioBlob);
+      }
+
+      function getNextApiKey() {
+        if (!apiKeys.length) return "";
+        const key = apiKeys[apiKeyIndex];
+        apiKeyIndex = (apiKeyIndex + 1) % apiKeys.length;
+        console.log("[Gemini API] Using key:", key);
+        return key;
       }
     </script>
     <script>lucide.createIcons();</script>
