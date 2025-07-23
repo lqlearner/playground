@@ -943,6 +943,7 @@ ${text}`
                 <div id="content" class="container"></div>
                 <script>
                     const markdownContent = \`${noteContent.replace(/`/g, '\\`')}\`;
+                    marked.use({ breaks: true });
                     document.getElementById('content').innerHTML = marked.parse(markdownContent);
                 <\/script>
             </body>
