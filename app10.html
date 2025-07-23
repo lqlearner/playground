@@ -1087,7 +1087,7 @@ ${text}`
                 <div id="content" class="container"></div>
                 <script>
                     const markdownContent = \`${noteContent.replace(/`/g, '\\`')}\`;
-                    document.getElementById('content').innerHTML = marked.parse(markdownContent);
+                    document.getElementById('content').innerHTML = marked.parse(noteContent);
                 <\/script>
             </body>
             </html>
