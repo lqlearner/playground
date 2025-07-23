@@ -914,11 +914,13 @@ ${text}`
         notes.forEach(note => {
           const li = document.createElement('li');
           li.className = "mb-2 flex items-center gap-2";
+          // MODIFIED: Renamed "View" to "ViewPolished" and added "ViewRaw"
           li.innerHTML = `
             <span class="font-semibold" contenteditable="true"
                   onblur="saveNoteTitle('${note.id}', this.textContent)"
                   onkeydown="if (event.key === 'Enter') { this.blur(); return false; }">${note.title || '[Untitled]'}</span>
-            <button onclick="viewNote('${note.id}')" class="px-2 py-0.5 bg-green-500 text-white text-xs rounded">View</button>
+            <button onclick="viewRawNote('${note.id}')" class="px-2 py-0.5 bg-teal-500 text-white text-xs rounded">ViewRaw</button>
+            <button onclick="viewPolishedNote('${note.id}')" class="px-2 py-0.5 bg-green-500 text-white text-xs rounded">ViewPolished</button>
             <button onclick="copyPolishedNote('${note.id}')" class="px-2 py-0.5 bg-blue-400 text-white text-xs rounded">Copy</button>
             <button onclick="exportNote('${note.id}')" class="px-2 py-0.5 bg-gray-400 text-white text-xs rounded">Export</button>
             <button onclick="deleteNoteUI('${note.id}')" class="px-2 py-0.5 bg-red-500 text-xs rounded text-white">Delete</button>
@@ -926,8 +928,51 @@ ${text}`
           list.appendChild(li);
         });
       }
+      
+      // ADDED: New function to view the raw transcript
+      function viewRawNote(noteId) {
+        const notes = loadMeetingNotes();
+        const note = notes.find(n => n.id === noteId);
+        if (note && typeof note.rawTranscript !== 'undefined') {
+            const newTab = window.open();
+            const noteContent = note.rawTranscript;
+            const noteTitle = note.title || 'Meeting Note';
+            // Use textContent to prevent any HTML injection
+            const pre = document.createElement('pre');
+            pre.textContent = noteContent;
 
-      function viewNote(noteId) {
+            newTab.document.write(`
+            <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <title>${noteTitle} - Raw Transcript</title>
+                <link rel="preconnect" href="https://fonts.googleapis.com">
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+                <style>
+                    body { font-family: 'Inter', sans-serif; line-height: 1.7; color: #374151; background-color: #f9fafb; margin: 0; padding: 2rem; }
+                    .container { max-width: 800px; margin: 0 auto; background-color: #ffffff; padding: 2rem 3rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+                    h1 { color: #1f2937; border-bottom: 1px solid #e5e7eb; padding-bottom: 0.3em; }
+                    pre { white-space: pre-wrap; word-wrap: break-word; background-color: #f3f4f6; padding: 1rem; border-radius: 4px; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <h1>Raw Transcript: ${noteTitle}</h1>
+                    <pre>${pre.innerHTML}</pre>
+                </div>
+            </body>
+            </html>
+            `);
+            newTab.document.close();
+        } else {
+             Toastify({ text: "No raw transcript content to view.", duration: 2000, gravity: "top", position: "center", backgroundColor: "#ef4444", stopOnFocus: true }).showToast();
+        }
+      }
+
+      // RENAMED: from viewNote to viewPolishedNote
+      function viewPolishedNote(noteId) {
         const notes = loadMeetingNotes();
         const note = notes.find(n => n.id === noteId);
         if (note && note.polishedNote) {
