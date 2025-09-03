@@ -81,13 +81,15 @@
           <button id="btnSnooze" class="warn">Snooze</button>
         </div>
         <p class="muted small" style="margin-top:10px">提示：Chrome 在 Windows 上会直接把网页通知显示到系统通知栏（右下角）。第一次需要用户授权（HTTPS 或 localhost）。</p>
+        <!-- MODIFIED: Explainer text updated for more clarity -->
         <div class="callout small" id="explainer" style="margin-top:10px; display:none">
-          <strong>Windows 系统通知栏说明：</strong>
+          <strong>如何接收 Windows 系统通知：</strong>
           <ul style="margin:6px 0 0 18px; padding-left:0">
-            <li>本页使用 <code>Notification API</code> 发送通知；在 Windows 上会以原生“桌面右下角”通知弹窗显示，并进入“通知中心”。</li>
-            <li>首次使用需授权浏览器通知；点击上方 <em>Enable notifications</em> 按钮进行授权。</li>
-            <li>只有 <strong>HTTPS</strong> 或 <code>localhost</code> 环境允许发送；HTTP 会被 Chrome 拒绝。</li>
-            <li>可选：注册 Service Worker 后，通知可带 <em>操作按钮</em>（Snooze / Skip / Start）。</li>
+            <li>本网页使用标准的 <code>Notification API</code> 发送通知。</li>
+            <li>在 Windows 上的 Chrome 浏览器中，这些通知会自动显示为 <strong>原生系统通知</strong>（桌面右下角弹窗），并被记录在 Windows 的“通知中心”里。</li>
+            <li>首次使用时，浏览器会请求授权。请点击上方的 <em>Enable notifications</em> 按钮，然后在浏览器弹窗中选择“允许”。</li>
+            <li>此功能需要安全的网络环境 (<strong>HTTPS</strong>) 或本地开发环境 (<code>localhost</code>)。</li>
+            <li>注册 Service Worker 后，通知上还可以带“Snooze”等快捷操作按钮。</li>
           </ul>
         </div>
       </section>
@@ -190,14 +192,118 @@
         startCountdownLoop();
 
         if (navigator.serviceWorker) {
-            navigator.serviceWorker.addEventListener('message', (e) => {
+            navigator.service-Worker.addEventListener('message', (e) => {
                 if (e.data?.type === SW_MSG_TYPE) {
                     handleAction(e.data.action || ACTIONS.CLICK);
                 }
             });
         }
       }
+      
+      // ... (The rest of the functions like loadState, saveState, etc. remain the same) ...
 
+      // ======= Notifications & Service Worker =======
+
+      /**
+       * Asks the user for permission to send notifications.
+       * This uses the standard browser Notification API. In Chrome on Windows,
+       * this will trigger a browser-level pop-up. If the user accepts,
+       * the browser gains the ability to send notifications to the Windows Action Center.
+       */
+      async function requestNotificationPermission() {
+        if (!('Notification' in window)) {
+          alert('This browser does not support desktop notification');
+          return;
+        }
+        // This is the standard API call to request permission.
+        const permission = await Notification.requestPermission();
+        console.log('Notification permission:', permission);
+        return permission;
+      }
+
+      /**
+       * Displays a notification.
+       * If permissions and Service Worker are ready, it sends a native OS notification.
+       * On Windows, this appears in the System Notification Center.
+       * Otherwise, it falls back to an in-app toast message.
+       */
+      function notifyNow(options = {}) {
+        const { test = false } = options;
+        const title = test ? 'Test Notification' : 'Time to rest/stretch! 💪';
+        const body = 'Stand up, loosen your shoulders, look 20 feet away for 20 seconds.';
+        const canUseNativeActions = swReg && Notification.permission === 'granted';
+
+        if (canUseNativeActions) {
+            // MODIFIED: Added comment to explain this part.
+            // This is the key function call. The Service Worker (`swReg`) shows a notification
+            // using the standard API. Chrome on Windows intercepts this and tells the OS
+            // to display a native notification in the bottom-right corner.
+            swReg.showNotification(title, {
+                body,
+                icon: 'https://via.placeholder.com/128/0B1020/E8EDFF?text=R',
+                tag: 'rest-reminder-notification', // A tag ensures new notifications replace old ones
+                actions: [
+                    { action: ACTIONS.SNOOZE, title: 'Snooze' },
+                    { action: ACTIONS.SKIP, title: 'Skip' },
+                ]
+            });
+        } else {
+            console.log('Cannot use native notifications with actions. Falling back to in-app toast.');
+            showToast();
+        }
+      }
+
+      function showToast() {
+        els.toast.style.display = 'block';
+        setTimeout(() => els.toast.classList.add('show'), 10);
+      }
+      function hideToast() {
+        els.toast.classList.remove('show');
+      }
+
+      async function maybeInitServiceWorker() {
+          if (!('serviceWorker' in navigator) || !window.isSecureContext) {
+              console.warn('Service Worker not supported or context is not secure.');
+              updateBadges();
+              return;
+          }
+          try {
+              const swScript = `
+                  self.addEventListener('notificationclick', (event) => {
+                      event.notification.close();
+                      const action = event.action || 'click';
+                      event.waitUntil(
+                          clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+                              // If a window for this app is already open, focus it and send a message
+                              for (const client of clientList) {
+                                  if (new URL(client.url).pathname === self.location.pathname && 'focus' in client) {
+                                      client.postMessage({ type: 'NOTIFICATION_ACTION', action: action });
+                                      return client.focus();
+                                  }
+                              }
+                              // Otherwise, open a new window
+                              if (clients.openWindow) return clients.openWindow(self.location.pathname);
+                          })
+                      );
+                  });
+              `;
+              const blob = new Blob([swScript], { type: 'application/javascript' });
+              const swURL = URL.createObjectURL(blob);
+              
+              swReg = await navigator.serviceWorker.register(swURL);
+              console.log('Service Worker registered successfully:', swReg);
+          } catch (e) {
+              console.error('Service Worker registration failed:', e);
+          } finally {
+              updateBadges();
+          }
+      }
+      
+      // NOTE: The rest of the JavaScript functions (loadState, saveState, handleAction, bindUI, etc.)
+      // are omitted here for brevity but are identical to the previous complete solution.
+      // The full script is included below the ellipsis for completeness.
+      // ... (Identical JS from previous answer) ...
+      
       // ======= State Management =======
       function loadState() {
         try {
@@ -290,8 +396,7 @@
         els.btnSave.addEventListener('click', () => {
           applyFormToState();
           saveState();
-          // Note: Saving does not restart the timer automatically. User can use "Start Now".
-          hydrateForm(); // Refresh UI with clamped values
+          hydrateForm();
           console.log('Settings saved.');
         });
         els.btnReset.addEventListener('click', () => {
@@ -374,7 +479,6 @@
       function triggerReminder(){
         console.log('Triggering reminder!');
         state.lastReminderAt = Date.now();
-        // The next reminder is scheduled when an action is taken.
         state.nextTriggerAt = null; 
         saveState();
         updateStatusUI();
@@ -389,15 +493,12 @@
         switch(action) {
           case ACTIONS.START:
           case ACTIONS.SKIP:
+          case ACTIONS.CLICK:
+          default:
             state.nextTriggerAt = now + state.reminderIntervalMin * MS_IN_MINUTE;
             break;
           case ACTIONS.SNOOZE:
             state.nextTriggerAt = now + state.snoozeDurationMin * MS_IN_MINUTE;
-            break;
-          case ACTIONS.CLICK:
-          default:
-            // If user just clicks the notification, treat it like a "start"
-            state.nextTriggerAt = now + state.reminderIntervalMin * MS_IN_MINUTE;
             break;
         }
         
@@ -405,87 +506,6 @@
         updateStatusUI();
         startOrStopTimers();
       }
-
-      // ======= Notifications & Service Worker =======
-      async function requestNotificationPermission() {
-        if (!('Notification' in window)) {
-          alert('This browser does not support desktop notification');
-          return;
-        }
-        const permission = await Notification.requestPermission();
-        console.log('Notification permission:', permission);
-        return permission;
-      }
-
-      function notifyNow(options = {}) {
-        const { test = false } = options;
-        const title = test ? 'Test Notification' : 'Time to rest/stretch! 💪';
-        const body = 'Stand up, loosen your shoulders, look 20 feet away for 20 seconds.';
-        const canUseNativeActions = swReg && Notification.permission === 'granted';
-
-        if (canUseNativeActions) {
-            swReg.showNotification(title, {
-                body,
-                icon: 'https://via.placeholder.com/128/0B1020/E8EDFF?text=R',
-                actions: [
-                    { action: ACTIONS.SNOOZE, title: 'Snooze' },
-                    { action: ACTIONS.SKIP, title: 'Skip' },
-                ]
-            });
-        } else {
-            console.log('Cannot use native notifications with actions. Falling back to in-app toast.');
-            showToast();
-        }
-      }
-
-      function showToast() {
-        els.toast.style.display = 'block';
-        setTimeout(() => els.toast.classList.add('show'), 10);
-      }
-      function hideToast() {
-        els.toast.classList.remove('show');
-        // We don't set display:none here to allow the fade-out transition
-      }
-
-      async function maybeInitServiceWorker() {
-          if (!('serviceWorker' in navigator)) {
-              console.warn('Service Worker not supported.');
-              updateBadges();
-              return;
-          }
-          try {
-              // We create the SW script as a string and register it via a Blob URL.
-              // This keeps everything in one file for this demo.
-              // In a real app, 'sw.js' would be a separate file.
-              const swScript = `
-                  self.addEventListener('notificationclick', (event) => {
-                      event.notification.close();
-                      const action = event.action || 'click';
-                      event.waitUntil(
-                          clients.matchAll({ type: 'window' }).then((clientList) => {
-                              for (const client of clientList) {
-                                  if (client.url === '/' && 'focus' in client) { // Adjust URL matching if needed
-                                    client.postMessage({ type: 'NOTIFICATION_ACTION', action: action });
-                                    return client.focus();
-                                  }
-                              }
-                              if (clients.openWindow) return clients.openWindow('/');
-                          })
-                      );
-                  });
-              `;
-              const blob = new Blob([swScript], { type: 'application/javascript' });
-              const swURL = URL.createObjectURL(blob);
-              
-              swReg = await navigator.serviceWorker.register(swURL);
-              console.log('Service Worker registered successfully:', swReg);
-          } catch (e) {
-              console.error('Service Worker registration failed:', e);
-          } finally {
-              updateBadges();
-          }
-      }
-
     });
   </script>
 </body>
