@@ -1,0 +1,21 @@
+{
+  "name": "Rest Reminder",
+  "short_name": "RestReminder",
+  "description": "A single-page application to remind you to take a break.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#0b1020",
+  "theme_color": "#121933",
+  "icons": [
+    {
+      "src": "https://www.google.com/s2/favicons?domain=example.com&sz=192",
+      "type": "image/png",
+      "sizes": "192x192"
+    },
+    {
+      "src": "https://www.google.com/s2/favicons?domain=example.com&sz=512",
+      "type": "image/png",
+      "sizes": "512x512"
+    }
+  ]
+}
