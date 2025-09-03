@@ -1,0 +1,492 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rest Reminder — SPA</title>
+  <style>
+    :root{
+      --bg:#0b1020; --panel:#121933; --muted:#95a1c6; --text:#e8edff; --accent:#6aa0ff; --accent-2:#52d1b1; --warn:#ffb86b; --danger:#ff6b6b;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0; font-family: system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif; background:linear-gradient(180deg,#0b1020 0%,#0e1530 70%); color:var(--text)}
+    .container{max-width:980px;margin:0 auto;padding:24px}
+    header{display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+    header h1{font-weight:700;font-size:1.6rem;margin:0}
+    header .badge{font-size:.85rem;opacity:.9;padding:.25rem .5rem;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12)}
+    header .badge-value {font-weight: 700;}
+    .app{display:grid;grid-template-columns: 1fr 360px; gap:20px}
+    @media (max-width: 900px){.app{grid-template-columns:1fr}}
+    .card{background:var(--panel);border:1px solid rgba(255,255,255,.1);border-radius:16px; padding:16px 18px; box-shadow:0 8px 28px rgba(2,6,23,.35)}
+    .card h2{margin:.2rem 0 0.6rem 0; font-size:1.1rem}
+    .muted{color:var(--muted)}
+    .row{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+    .col{display:flex;flex-direction:column;gap:6px}
+    label{font-size:.92rem; color:#cfd8ff}
+    input[type="number"], select{background:#0d1430;color:var(--text);border:1px solid rgba(255,255,255,.15); border-radius:10px; padding:10px 12px; min-width:100px}
+    input[type="checkbox"]{transform:scale(1.2)}
+    button{background:linear-gradient(180deg,#3358ff,#2850e6); color:#fff; border:none; border-radius:12px; padding:10px 14px; font-weight:650; cursor:pointer}
+    button.ghost{background:transparent;border:1px solid rgba(255,255,255,.18)}
+    button.warn{background:linear-gradient(180deg,#ff9e5e,#ff7a3d)}
+    button.secondary{background:linear-gradient(180deg,#3aaf95,#2a9f86)}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+    .pill{display:inline-flex;gap:8px;align-items:center;padding:6px 10px;border:1px solid rgba(255,255,255,.1);border-radius:999px;background:rgba(255,255,255,.06)}
+    .stat{display:flex;flex-direction:column;gap:6px;padding:10px 12px;background:#0d1430;border:1px solid rgba(255,255,255,.08);border-radius:14px}
+    .stat .value{font-size:1.4rem;font-weight:700}
+    .divider{height:1px;background:rgba(255,255,255,.12);margin:12px 0}
+    .toast{position:fixed; left:50%; transform:translateX(-50%); bottom:20px; display:none; max-width:min(640px, 92vw); z-index:1000; opacity:0; transition:opacity .3s, bottom .3s; }
+    .toast.show{display:block; opacity:1; bottom:30px;}
+    .toast-inner{display:flex;gap:12px;align-items:center; background:#0f1b3d; border:1px solid rgba(255,255,255,.16); border-radius:16px; padding:14px 14px; box-shadow:0 12px 32px rgba(0,0,0,.4)}
+    .toast .title{font-weight:700}
+    .toast .actions{margin-left:auto; display:flex;gap:8px}
+    .chip{font-size:.8rem; color:var(--muted)}
+    .kbd{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size:.82rem; background:#0d1430; padding:2px 6px; border-radius:6px; border:1px solid rgba(255,255,255,.12)}
+    .callout{border-left:4px solid var(--accent); padding:10px 12px; background:rgba(106,160,255,.08); border-radius:8px}
+    .small{font-size:.9rem}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Rest Reminder</h1>
+      <span class="badge">Single‑Page App</span>
+      <span class="badge" id="permBadge">Notifications: <span class="badge-value">unknown</span></span>
+      <span class="badge" id="swBadge" title="Service Worker for action buttons">SW: <span class="badge-value">—</span></span>
+      <span class="badge" id="secureBadge" title="HTTPS or localhost required for native toasts">Context: <span class="badge-value">checking…</span></span>
+    </header>
+
+    <div class="app">
+      <section class="card" aria-labelledby="statusHeading">
+        <h2 id="statusHeading">Status</h2>
+        <div class="grid">
+          <div class="stat">
+            <div class="muted">Next reminder in</div>
+            <div class="value" id="countdown">—</div>
+            <div class="chip" id="nextAtChip">Next at: —</div>
+          </div>
+          <div class="stat">
+            <div class="muted">Last reminder</div>
+            <div class="value" id="lastReminder">—</div>
+            <div class="chip" id="enabledChip">Enabled: —</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="row">
+          <button id="btnEnableNotif" class="secondary">Enable notifications</button>
+          <button id="btnTestNotif" class="ghost">Send test notification</button>
+          <button id="btnStartNow">Start now</button>
+          <button id="btnSkip" class="ghost">Skip</button>
+          <button id="btnSnooze" class="warn">Snooze</button>
+        </div>
+        <p class="muted small" style="margin-top:10px">提示：Chrome 在 Windows 上会直接把网页通知显示到系统通知栏（右下角）。第一次需要用户授权（HTTPS 或 localhost）。</p>
+        <div class="callout small" id="explainer" style="margin-top:10px; display:none">
+          <strong>Windows 系统通知栏说明：</strong>
+          <ul style="margin:6px 0 0 18px; padding-left:0">
+            <li>本页使用 <code>Notification API</code> 发送通知；在 Windows 上会以原生“桌面右下角”通知弹窗显示，并进入“通知中心”。</li>
+            <li>首次使用需授权浏览器通知；点击上方 <em>Enable notifications</em> 按钮进行授权。</li>
+            <li>只有 <strong>HTTPS</strong> 或 <code>localhost</code> 环境允许发送；HTTP 会被 Chrome 拒绝。</li>
+            <li>可选：注册 Service Worker 后，通知可带 <em>操作按钮</em>（Snooze / Skip / Start）。</li>
+          </ul>
+        </div>
+      </section>
+
+      <aside class="card" aria-labelledby="settingsHeading">
+        <h2 id="settingsHeading">Settings</h2>
+        <div class="col" style="gap:10px">
+          <div class="row">
+            <label for="enabledToggle" class="pill"><input type="checkbox" id="enabledToggle" /> <span>Reminders enabled</span></label>
+          </div>
+          <div class="row">
+            <div class="col" style="min-width:160px">
+              <label for="intervalMin">Reminder interval (minutes)</label>
+              <input id="intervalMin" type="number" min="1" step="1" />
+            </div>
+            <div class="col" style="min-width:160px">
+              <label for="snoozeMin">Snooze duration (minutes)</label>
+              <input id="snoozeMin" type="number" min="0.5" step="0.5" />
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:8px">
+            <span class="muted small">Presets:</span>
+            <button class="ghost" data-preset="10,0.5">Every 10m · 30s snooze</button>
+            <button class="ghost" data-preset="45,5">Every 45m · 5m snooze</button>
+          </div>
+
+          <div class="divider"></div>
+          <div class="row">
+            <button id="btnSave" class="secondary">Save</button>
+            <button id="btnReset" class="ghost">Reset to defaults</button>
+            <button id="btnClearLS" class="ghost">Clear localStorage</button>
+          </div>
+
+          <p class="muted small">Preferences persist locally under <span class="kbd">localStorage['restReminder.preferences.v1']</span>.</p>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">
+    <div class="toast-inner">
+      <div>
+        <div class="title">Time to rest/stretch</div>
+        <div class="muted">Stand up, loosen your shoulders, look 20 feet away for 20 seconds. 💪</div>
+      </div>
+      <div class="actions">
+        <button id="toastStart">Start now</button>
+        <button id="toastSnooze" class="warn">Snooze</button>
+        <button id="toastSkip" class="ghost">Skip</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // ======= Configuration & State =======
+      const LS_KEY = 'restReminder.preferences.v1';
+      const DEFAULTS = Object.freeze({
+        reminderIntervalMin: 45,
+        snoozeDurationMin: 5,
+        enabled: true,
+        lastReminderAt: null,
+        nextTriggerAt: null
+      });
+      const ACTIONS = {
+        START: 'start',
+        SKIP: 'skip',
+        SNOOZE: 'snooze',
+        CLICK: 'click' // Default notification click
+      };
+      const SW_MSG_TYPE = 'NOTIFICATION_ACTION';
+      const MS_IN_MINUTE = 60 * 1000;
+
+      let state = loadState();
+      let timerId = null;
+      let rafId = null;
+      let swReg = null;
+
+      const $ = (sel) => document.querySelector(sel);
+      const els = {
+        permBadge: $('#permBadge .badge-value'), swBadge: $('#swBadge .badge-value'), secureBadge: $('#secureBadge .badge-value'),
+        countdown: $('#countdown'), nextAtChip: $('#nextAtChip'), lastReminder: $('#lastReminder'), enabledChip: $('#enabledChip'),
+        btnEnableNotif: $('#btnEnableNotif'), btnTestNotif: $('#btnTestNotif'), btnStartNow: $('#btnStartNow'), btnSkip: $('#btnSkip'), btnSnooze: $('#btnSnooze'),
+        enabledToggle: $('#enabledToggle'), intervalMin: $('#intervalMin'), snoozeMin: $('#snoozeMin'),
+        btnSave: $('#btnSave'), btnReset: $('#btnReset'), btnClearLS: $('#btnClearLS'), presets: [...document.querySelectorAll('[data-preset]')],
+        toast: $('#toast'), toastStart: $('#toastStart'), toastSnooze: $('#toastSnooze'), toastSkip: $('#toastSkip'),
+        explainer: $('#explainer'),
+      };
+
+      init();
+
+      async function init() {
+        hydrateForm();
+        updateBadges();
+        showExplainerIfFirstRun();
+        bindUI();
+        await maybeInitServiceWorker();
+        startOrStopTimers();
+        startCountdownLoop();
+
+        if (navigator.serviceWorker) {
+            navigator.serviceWorker.addEventListener('message', (e) => {
+                if (e.data?.type === SW_MSG_TYPE) {
+                    handleAction(e.data.action || ACTIONS.CLICK);
+                }
+            });
+        }
+      }
+
+      // ======= State Management =======
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(LS_KEY);
+          if (!raw) return { ...DEFAULTS };
+          const obj = JSON.parse(raw);
+          return { ...DEFAULTS, ...obj };
+        } catch (e) {
+          console.warn('Failed to parse localStorage. Resetting.', e);
+          return { ...DEFAULTS };
+        }
+      }
+
+      function saveState() {
+        localStorage.setItem(LS_KEY, JSON.stringify(state));
+      }
+
+      // ======= UI Hydration & Updates =======
+      function hydrateForm() {
+        els.enabledToggle.checked = !!state.enabled;
+        els.intervalMin.value = Number(state.reminderIntervalMin || DEFAULTS.reminderIntervalMin);
+        els.snoozeMin.value = Number(state.snoozeDurationMin || DEFAULTS.snoozeDurationMin);
+        updateStatusUI();
+      }
+
+      function updateStatusUI() {
+        const nf = new Intl.DateTimeFormat([], { dateStyle: 'medium', timeStyle: 'short' });
+        els.enabledChip.textContent = state.enabled ? 'Yes' : 'No';
+        els.lastReminder.textContent = state.lastReminderAt ? nf.format(new Date(state.lastReminderAt)) : '—';
+        const nextAt = nextTriggerTime();
+        els.nextAtChip.textContent = 'Next at: ' + (nextAt ? nf.format(new Date(nextAt)) : '—');
+        els.btnEnableNotif.disabled = (typeof Notification !== 'undefined') && Notification.permission !== 'default';
+        updateBadges();
+      }
+
+      function updateBadges() {
+        const perm = (typeof Notification !== 'undefined') ? Notification.permission : 'unsupported';
+        els.permBadge.textContent = perm;
+        els.swBadge.textContent = swReg ? 'ready' : (('serviceWorker' in navigator) ? 'not active' : 'unsupported');
+        const secure = window.isSecureContext;
+        if (els.secureBadge) els.secureBadge.textContent = secure ? 'secure' : 'insecure';
+      }
+
+      function showExplainerIfFirstRun() {
+        const firstRun = !localStorage.getItem(LS_KEY);
+        els.explainer.style.display = firstRun ? 'block' : 'none';
+      }
+
+      function repaintCountdown() {
+          const nextAt = nextTriggerTime();
+          if (!state.enabled || !nextAt) {
+              els.countdown.textContent = '—';
+              return;
+          }
+          const diffMs = nextAt - Date.now();
+          if (diffMs <= 0) {
+              els.countdown.textContent = 'Now!';
+              return;
+          }
+          const totalSeconds = Math.round(diffMs / 1000);
+          const minutes = Math.floor(totalSeconds / 60);
+          const seconds = totalSeconds % 60;
+          els.countdown.textContent = `${minutes}:${String(seconds).padStart(2, '0')}`;
+      }
+      
+      function startCountdownLoop() {
+        if(rafId) cancelAnimationFrame(rafId);
+        function loop() {
+          repaintCountdown();
+          rafId = requestAnimationFrame(loop);
+        }
+        loop();
+      }
+
+      // ======= Event Binding =======
+      function bindUI() {
+        els.btnEnableNotif.addEventListener('click', async () => {
+          await requestNotificationPermission();
+          updateStatusUI();
+        });
+        els.btnTestNotif.addEventListener('click', () => notifyNow({ test: true }));
+        els.btnStartNow.addEventListener('click', () => handleAction(ACTIONS.START));
+        els.btnSkip.addEventListener('click', () => handleAction(ACTIONS.SKIP));
+        els.btnSnooze.addEventListener('click', () => handleAction(ACTIONS.SNOOZE));
+
+        els.toastStart.addEventListener('click', () => handleAction(ACTIONS.START));
+        els.toastSnooze.addEventListener('click', () => handleAction(ACTIONS.SNOOZE));
+        els.toastSkip.addEventListener('click', () => handleAction(ACTIONS.SKIP));
+
+        els.btnSave.addEventListener('click', () => {
+          applyFormToState();
+          saveState();
+          // Note: Saving does not restart the timer automatically. User can use "Start Now".
+          hydrateForm(); // Refresh UI with clamped values
+          console.log('Settings saved.');
+        });
+        els.btnReset.addEventListener('click', () => {
+          state = { ...DEFAULTS, nextTriggerAt: Date.now() + DEFAULTS.reminderIntervalMin * MS_IN_MINUTE };
+          saveState();
+          hydrateForm();
+          startOrStopTimers();
+        });
+        els.btnClearLS.addEventListener('click', () => {
+          localStorage.removeItem(LS_KEY);
+          state = { ...DEFAULTS };
+          hydrateForm();
+          startOrStopTimers();
+          console.log('localStorage cleared.');
+        });
+
+        els.enabledToggle.addEventListener('change', () => {
+          state.enabled = !!els.enabledToggle.checked;
+          if(state.enabled && !state.nextTriggerAt) {
+            state.nextTriggerAt = Date.now() + state.reminderIntervalMin * MS_IN_MINUTE;
+          }
+          saveState();
+          startOrStopTimers();
+          updateStatusUI();
+        });
+
+        els.presets.forEach(btn => btn.addEventListener('click', () => {
+          const [i, s] = btn.dataset.preset.split(',').map(Number);
+          els.intervalMin.value = i;
+          els.snoozeMin.value = s;
+        }));
+
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) repaintCountdown();
+        });
+      }
+
+      function applyFormToState() {
+        const interval = clamp(Number(els.intervalMin.value), 1, 1440);
+        const snooze = clamp(Number(els.snoozeMin.value), 0.1, 180);
+        state.reminderIntervalMin = interval;
+        state.snoozeDurationMin = snooze;
+      }
+
+      // ======= Core Logic =======
+      function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+      function nextTriggerTime() {
+        return state.enabled && state.nextTriggerAt && state.nextTriggerAt > Date.now()
+          ? state.nextTriggerAt
+          : null;
+      }
+
+      function clearTimer() {
+        if(timerId) clearTimeout(timerId);
+        timerId = null;
+      }
+      
+      function startOrStopTimers() {
+        clearTimer();
+        hideToast();
+        if (!state.enabled) {
+          console.log('Timers stopped (disabled).');
+          repaintCountdown();
+          return;
+        }
+        
+        const nextAt = nextTriggerTime();
+        if (!nextAt) {
+          console.log('No upcoming trigger time.');
+          repaintCountdown();
+          return;
+        }
+        
+        const delay = Math.max(0, nextAt - Date.now());
+        console.log(`Scheduling next reminder in ${Math.round(delay/1000)}s`);
+        timerId = setTimeout(triggerReminder, delay);
+      }
+
+      function triggerReminder(){
+        console.log('Triggering reminder!');
+        state.lastReminderAt = Date.now();
+        // The next reminder is scheduled when an action is taken.
+        state.nextTriggerAt = null; 
+        saveState();
+        updateStatusUI();
+        notifyNow();
+      }
+
+      function handleAction(action) {
+        console.log('Action taken:', action);
+        const now = Date.now();
+        hideToast();
+
+        switch(action) {
+          case ACTIONS.START:
+          case ACTIONS.SKIP:
+            state.nextTriggerAt = now + state.reminderIntervalMin * MS_IN_MINUTE;
+            break;
+          case ACTIONS.SNOOZE:
+            state.nextTriggerAt = now + state.snoozeDurationMin * MS_IN_MINUTE;
+            break;
+          case ACTIONS.CLICK:
+          default:
+            // If user just clicks the notification, treat it like a "start"
+            state.nextTriggerAt = now + state.reminderIntervalMin * MS_IN_MINUTE;
+            break;
+        }
+        
+        saveState();
+        updateStatusUI();
+        startOrStopTimers();
+      }
+
+      // ======= Notifications & Service Worker =======
+      async function requestNotificationPermission() {
+        if (!('Notification' in window)) {
+          alert('This browser does not support desktop notification');
+          return;
+        }
+        const permission = await Notification.requestPermission();
+        console.log('Notification permission:', permission);
+        return permission;
+      }
+
+      function notifyNow(options = {}) {
+        const { test = false } = options;
+        const title = test ? 'Test Notification' : 'Time to rest/stretch! 💪';
+        const body = 'Stand up, loosen your shoulders, look 20 feet away for 20 seconds.';
+        const canUseNativeActions = swReg && Notification.permission === 'granted';
+
+        if (canUseNativeActions) {
+            swReg.showNotification(title, {
+                body,
+                icon: 'https://via.placeholder.com/128/0B1020/E8EDFF?text=R',
+                actions: [
+                    { action: ACTIONS.SNOOZE, title: 'Snooze' },
+                    { action: ACTIONS.SKIP, title: 'Skip' },
+                ]
+            });
+        } else {
+            console.log('Cannot use native notifications with actions. Falling back to in-app toast.');
+            showToast();
+        }
+      }
+
+      function showToast() {
+        els.toast.style.display = 'block';
+        setTimeout(() => els.toast.classList.add('show'), 10);
+      }
+      function hideToast() {
+        els.toast.classList.remove('show');
+        // We don't set display:none here to allow the fade-out transition
+      }
+
+      async function maybeInitServiceWorker() {
+          if (!('serviceWorker' in navigator)) {
+              console.warn('Service Worker not supported.');
+              updateBadges();
+              return;
+          }
+          try {
+              // We create the SW script as a string and register it via a Blob URL.
+              // This keeps everything in one file for this demo.
+              // In a real app, 'sw.js' would be a separate file.
+              const swScript = `
+                  self.addEventListener('notificationclick', (event) => {
+                      event.notification.close();
+                      const action = event.action || 'click';
+                      event.waitUntil(
+                          clients.matchAll({ type: 'window' }).then((clientList) => {
+                              for (const client of clientList) {
+                                  if (client.url === '/' && 'focus' in client) { // Adjust URL matching if needed
+                                    client.postMessage({ type: 'NOTIFICATION_ACTION', action: action });
+                                    return client.focus();
+                                  }
+                              }
+                              if (clients.openWindow) return clients.openWindow('/');
+                          })
+                      );
+                  });
+              `;
+              const blob = new Blob([swScript], { type: 'application/javascript' });
+              const swURL = URL.createObjectURL(blob);
+              
+              swReg = await navigator.serviceWorker.register(swURL);
+              console.log('Service Worker registered successfully:', swReg);
+          } catch (e) {
+              console.error('Service Worker registration failed:', e);
+          } finally {
+              updateBadges();
+          }
+      }
+
+    });
+  </script>
+</body>
+</html>
