@@ -13,7 +13,9 @@
             --text-color: #212529;
             --text-light: #ffffff;
             --pointer-color: #3f51b5;
-            --winner-bg: #e8f5e9; /* Light green for winner list items */
+            --winner-bg: #e8f5e9;
+            --button-color: #28a745;
+            --button-hover-color: #218838;
         }
 
         body, html {
@@ -98,35 +100,9 @@
             font-size: 1.2rem;
             transition: opacity 0.3s, transform 0.3s;
         }
-        
-        .winner-announcement {
-            position: absolute;
-            padding: 20px 40px;
-            background: rgba(0, 0, 0, 0.75);
-            color: white;
-            border-radius: 12px;
-            font-size: 2.5rem;
-            font-weight: bold;
-            z-index: 20;
-            opacity: 0;
-            transform: scale(0.5);
-            transition: all 0.3s ease-in-out;
-            pointer-events: none;
-        }
 
-        .winner-announcement.show {
-            opacity: 1;
-            transform: scale(1);
-        }
-
-        .spin-overlay:hover {
-            transform: scale(1.05);
-        }
-
-        .spin-overlay.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
+        .spin-overlay:hover { transform: scale(1.05); }
+        .spin-overlay.hidden { opacity: 0; pointer-events: none; }
 
         .panel-section {
             flex: 1;
@@ -138,74 +114,54 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.05);
             display: flex;
             flex-direction: column;
-            overflow: hidden; /* Important for flex layout */
+            overflow: hidden;
         }
         
-        .panel-group {
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 20px;
-        }
-        .panel-group.entries {
-             flex-grow: 1; /* Allow this group to grow */
-             min-height: 150px; /* Ensure it has some minimum height */
-        }
-        
+        .panel-group { display: flex; flex-direction: column; margin-bottom: 20px; }
+        .panel-group.entries { flex-grow: 1; min-height: 150px; }
         .panel-group h3 {
-            margin-top: 0;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 10px;
-            margin-bottom: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            margin-top: 0; border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px; margin-bottom: 15px; display: flex;
+            justify-content: space-between; align-items: center;
         }
-        
-        .count-badge {
-            background-color: #e9ecef;
-            padding: 2px 8px;
-            border-radius: 10px;
-            font-size: 0.9rem;
-        }
-
+        .count-badge { background-color: #e9ecef; padding: 2px 8px; border-radius: 10px; font-size: 0.9rem; }
         #entries-textarea {
-            width: 100%;
-            box-sizing: border-box;
-            flex-grow: 1;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            padding: 10px;
-            font-size: 1rem;
-            resize: none;
+            width: 100%; box-sizing: border-box; flex-grow: 1;
+            border: 1px solid var(--border-color); border-radius: 4px;
+            padding: 10px; font-size: 1rem; resize: none;
         }
+        #results-list { list-style-type: decimal; padding-left: 25px; margin: 0; overflow-y: auto; flex-shrink: 1; }
+        #results-list li { padding: 8px 12px; border-bottom: 1px solid var(--border-color); background-color: #fff; }
+        #results-list li:first-child { font-weight: bold; background-color: var(--winner-bg); }
+        #results-list li:last-child { border-bottom: none; }
 
-        #results-list {
-            list-style-type: decimal;
-            padding-left: 25px;
-            margin: 0;
-            overflow-y: auto;
-            flex-shrink: 1; /* Allow this to shrink if needed */
+        /* --- Modal Styles --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1000; opacity: 0; pointer-events: none;
+            transition: opacity 0.3s ease;
         }
-
-        #results-list li {
-            padding: 8px 12px;
-            border-bottom: 1px solid var(--border-color);
-            background-color: #fff;
+        .modal-overlay:not(.hidden) { opacity: 1; pointer-events: auto; }
+        .modal-content {
+            background: white; padding: 40px; border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            text-align: center;
+            transform: scale(0.9); transition: transform 0.3s ease;
         }
-        #results-list li:first-child {
-            font-weight: bold;
-            background-color: var(--winner-bg);
+        .modal-overlay:not(.hidden) .modal-content { transform: scale(1); }
+        .modal-content h2 { margin: 0 0 10px; font-size: 1.5rem; color: #555;}
+        #modal-winner-name { font-size: 3.5rem; font-weight: bold; margin-bottom: 30px; color: var(--bar-bg); }
+        #modal-remove-btn {
+            background-color: var(--button-color); color: white;
+            border: none; padding: 12px 25px; border-radius: 6px;
+            font-size: 1.2rem; cursor: pointer; transition: background-color 0.2s;
         }
-        #results-list li:last-child {
-            border-bottom: none;
-        }
+        #modal-remove-btn:hover { background-color: var(--button-hover-color); }
 
         @media (max-width: 768px) {
-            .app-container {
-                flex-direction: column;
-                height: auto;
-                overflow: auto;
-            }
+            .app-container { flex-direction: column; height: auto; overflow: auto; }
             .wheel-section { order: 1; }
             .panel-section { order: 2; max-height: 50vh; }
         }
@@ -223,7 +179,6 @@
                     Click to spin
                     <small>or press ctrl+enter</small>
                 </div>
-                <div id="winner-announcement" class="winner-announcement"></div>
             </div>
         </section>
         <section class="panel-section">
@@ -246,8 +201,16 @@ Hanna
             </div>
         </section>
     </main>
+
+    <!-- Winner Modal -->
+    <div id="winner-modal-overlay" class="modal-overlay hidden">
+        <div class="modal-content">
+            <h2>The winner is...</h2>
+            <p id="modal-winner-name"></p>
+            <button id="modal-remove-btn">Remove Winner</button>
+        </div>
+    </div>
     
-    <!-- Confetti library for celebration -->
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
 
     <script>
@@ -256,27 +219,29 @@ Hanna
             const ctx = canvas.getContext('2d');
             const textarea = document.getElementById('entries-textarea');
             const spinOverlay = document.getElementById('spin-overlay');
-            const winnerAnnouncer = document.getElementById('winner-announcement');
             const entriesCount = document.getElementById('entries-count');
             const resultsCount = document.getElementById('results-count');
             const resultsList = document.getElementById('results-list');
             
+            const modalOverlay = document.getElementById('winner-modal-overlay');
+            const modalWinnerName = document.getElementById('modal-winner-name');
+            const modalRemoveBtn = document.getElementById('modal-remove-btn');
+
             const centerX = canvas.width / 2;
             const centerY = canvas.height / 2;
             const radius = centerX - 10;
-            
             const colors = ['#4285F4', '#34A853', '#FBBC05', '#EA4335']; 
             
             let entries = [];
             let winners = [];
             let isSpinning = false;
             let currentRotation = 0;
+            let pendingWinner = null;
 
             const updateAndDrawWheel = () => {
                 entries = textarea.value.split('\n').filter(name => name.trim() !== '');
                 entriesCount.textContent = entries.length;
                 drawWheel();
-                
                 spinOverlay.classList.toggle('hidden', entries.length < 2 || isSpinning);
             };
 
@@ -293,48 +258,30 @@ Hanna
             const drawWheel = () => {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 if (entries.length === 0) return;
-
                 const segmentAngle = (2 * Math.PI) / entries.length;
 
                 entries.forEach((name, i) => {
                     const startAngle = i * segmentAngle;
                     const endAngle = (i + 1) * segmentAngle;
-                    
                     ctx.beginPath();
                     ctx.moveTo(centerX, centerY);
                     ctx.arc(centerX, centerY, radius, startAngle, endAngle);
                     ctx.closePath();
                     ctx.fillStyle = colors[i % colors.length];
                     ctx.fill();
-
                     ctx.save();
                     ctx.translate(centerX, centerY);
                     ctx.rotate(startAngle + segmentAngle / 2);
                     ctx.textAlign = "center";
                     ctx.fillStyle = "#fff";
                     ctx.font = "bold 24px 'Segoe UI', sans-serif";
-                    
                     ctx.shadowColor = "rgba(0,0,0,0.4)";
                     ctx.shadowBlur = 4;
                     ctx.shadowOffsetX = 1;
                     ctx.shadowOffsetY = 1;
-                    
                     ctx.fillText(name.trim(), radius * 0.65, 10);
                     ctx.restore();
                 });
-            };
-            
-            const announceWinner = (winner) => {
-                winnerAnnouncer.textContent = `${winner}!`;
-                winnerAnnouncer.classList.add('show');
-                
-                if (window.confetti) {
-                    confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
-                }
-
-                setTimeout(() => {
-                    winnerAnnouncer.classList.remove('show');
-                }, 3000);
             };
 
             const spin = () => {
@@ -346,46 +293,62 @@ Hanna
                 const winnerIndex = Math.floor(Math.random() * entries.length);
                 const segmentAngle = (2 * Math.PI) / entries.length;
                 const winningSegmentMiddleAngle = (winnerIndex + 0.5) * segmentAngle;
-                
                 const randomSpins = Math.floor(Math.random() * 5) + 5;
                 const targetRotation = (randomSpins * 2 * Math.PI) - winningSegmentMiddleAngle;
-                
                 const totalRotation = targetRotation;
                 canvas.style.transform = `rotate(${totalRotation}rad)`;
 
                 canvas.addEventListener('transitionend', () => {
-                    const winner = entries[winnerIndex];
-                    
-                    announceWinner(winner);
-
-                    // Update data models first
-                    winners.unshift(winner); // Add to the beginning for "latest first"
-                    entries.splice(winnerIndex, 1);
-                    
-                    // Update UI from models
-                    textarea.value = entries.join('\n');
-                    updateResultsDisplay();
-                    
-                    // Reset for next spin
-                    isSpinning = false;
-                    currentRotation = totalRotation % (2 * Math.PI);
-                    
-                    canvas.style.transition = 'none';
-                    canvas.style.transform = `rotate(${currentRotation}rad)`;
-                    canvas.offsetHeight; 
-                    canvas.style.transition = 'transform 7s cubic-bezier(0.1, 0.7, 0.3, 1)';
-                    
-                    updateAndDrawWheel();
+                    const winnerName = entries[winnerIndex];
+                    pendingWinner = { name: winnerName, index: winnerIndex, rotation: totalRotation };
+                    modalWinnerName.textContent = winnerName;
+                    modalOverlay.classList.remove('hidden');
                 }, { once: true });
             };
 
-            // Event Listeners
+            const handleWinnerRemoval = () => {
+                if (!pendingWinner) return;
+
+                modalOverlay.classList.add('hidden');
+                
+                // Celebrate
+                if (window.confetti) {
+                    confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 } });
+                }
+
+                // Update data models
+                winners.unshift(pendingWinner.name);
+                entries.splice(pendingWinner.index, 1);
+                
+                // Update UI
+                textarea.value = entries.join('\n');
+                updateResultsDisplay();
+                
+                // Reset wheel state for next spin
+                isSpinning = false;
+                currentRotation = pendingWinner.rotation % (2 * Math.PI);
+                canvas.style.transition = 'none';
+                canvas.style.transform = `rotate(${currentRotation}rad)`;
+                canvas.offsetHeight; // Force reflow to apply style immediately
+                canvas.style.transition = 'transform 7s cubic-bezier(0.1, 0.7, 0.3, 1)';
+                
+                // Redraw wheel and clear pending state
+                updateAndDrawWheel();
+                pendingWinner = null;
+            };
+
+            // --- Event Listeners ---
             textarea.addEventListener('input', updateAndDrawWheel);
             spinOverlay.addEventListener('click', spin);
+            modalRemoveBtn.addEventListener('click', handleWinnerRemoval);
             document.addEventListener('keydown', (e) => {
                 if (e.ctrlKey && e.key === 'Enter') {
                     e.preventDefault();
                     spin();
+                }
+                // Also allow 'Enter' to confirm the winner from the modal
+                if (e.key === 'Enter' && !modalOverlay.classList.contains('hidden')) {
+                    handleWinnerRemoval();
                 }
             });
 
