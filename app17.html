@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <title>Transformer 输出可视化演示</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f7f7f7;
+      --text:#111;
+      --muted:#666;
+      --primary:#4A90E2;
+      --radius:14px;
+    }
+    /* 全局与居中布局 */
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color:var(--text);
+      background:var(--bg);
+      display:flex;
+      align-items:center;       /* 垂直居中 */
+      justify-content:center;   /* 水平居中 */
+      padding:24px;
+    }
+    .container{
+      width:min(920px, 100%);
+      background:#fff;
+      padding:32px 24px;
+      border-radius:var(--radius);
+      box-shadow: 0 10px 30px rgba(0,0,0,.06);
+      text-align:center;        /* 文本与内元素居中 */
+    }
+    h1{
+      margin:0 0 12px;
+      font-size:28px;
+      letter-spacing:.5px;
+    }
+    .sub{
+      margin:0 0 20px;
+      color:var(--muted);
+      font-size:14px;
+    }
+    .output{
+      font-size:24px;
+      margin: 10px auto 20px;
+      font-weight:600;
+      line-height:1.4;
+    }
+
+    /* 柱状图容器与柱子 */
+    .bar-wrap{
+      display:flex;
+      justify-content:center;   /* 水平居中所有柱子 */
+      align-items:flex-end;
+      gap:12px;
+      height:180px;
+      margin: 0 auto 22px;
+      padding: 10px 8px;
+      border-radius:12px;
+      background:linear-gradient(180deg, #fafafa, #f1f1f1);
+    }
+    .bar{
+      width:44px;
+      background:var(--primary);
+      text-align:center;
+      color:#fff;
+      border-radius:8px 8px 0 0;
+      position:relative;
+      transition:height .25s ease;
+    }
+    .bar span{
+      position:absolute;
+      bottom:100%;
+      left:50%;
+      transform:translateX(-50%);
+      margin-bottom:6px;
+      font-size:13px;
+      color:#333;
+      line-height:1.2;
+      white-space:nowrap;
+    }
+
+    /* 选项按钮整体与按钮样式（居中） */
+    .options{
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:center;   /* 居中按钮 */
+      gap:10px;
+      margin:0 auto 8px;
+    }
+    .btn{
+      appearance:none;
+      border:1px solid #e5e5e5;
+      background:#fff;
+      padding:10px 16px;
+      font-size:16px;
+      border-radius:10px;
+      cursor:pointer;
+      transition:transform .06s ease, box-shadow .2s ease, border-color .2s ease;
+    }
+    .btn:hover{
+      box-shadow:0 6px 16px rgba(0,0,0,.06);
+      border-color:#ddd;
+    }
+    .btn:active{ transform:scale(.98) }
+
+    /* 骰子区域（居中） */
+    .dice{
+      margin-top:22px;
+      display:flex;
+      flex-direction:column;
+      align-items:center;       /* 垂直方向上内容居中 */
+      justify-content:center;   /* 水平方向上内容居中 */
+      gap:10px;
+    }
+    #diceFace{
+      font-size:60px;
+      user-select:none;
+      line-height:1;
+    }
+    .dice .btn{
+      font-size:16px;
+      padding:10px 18px;
+    }
+
+    /* 小屏优化 */
+    @media (max-width: 480px){
+      .output{ font-size:20px }
+      .bar-wrap{ height:160px }
+      .bar{ width:36px }
+      .btn{ font-size:15px; padding:9px 14px }
+    }
+  </style>
+</head>
+<body>
+  <main class="container" role="main">
+    <h1>Transformer 输出模拟器</h1>
+
+    <div class="output" id="output">我无法判断雪山的美</div>
+
+    <div id="chart" class="bar-wrap" aria-label="概率柱状图"></div>
+
+    <div class="options" id="options" aria-label="可选token"></div>
+
+    <div class="dice" aria-live="polite">
+      <div id="diceFace" aria-label="骰子当前面">🎲</div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center;">
+        <button class="btn" onclick="rollDice()">掷骰子</button>
+        <button class="btn" onclick="restart()">重新开始</button>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const tree = {
+      "token": "美",
+      "children": [
+        {
+          "token": "丽",
+          "children": [
+            {"token": "因", "children": [
+              {"token": "为", "children": ["山势险峻"]},
+              {"token": "此", "children": ["选择在夏天登顶"]},
+              {"token": "为", "children": ["雪山的高度很高"]}
+            ]},
+            {"token": "程", "children": [
+              {"token": "度", "children": ["，但我相信在阳光的照耀下一定令人心碎"]}
+            ]},
+            {"token": "，", "children": [
+              {"token": "但", "children": ["我知道风景如画"]}
+            ]}
+          ]
+        },
+        {
+          "token": "好",
+          "children": [
+            {"token": "奇", "children": ["景……"]},
+            {"token": "，", "children": ["只因它在风中沉默不语……"]},
+            {"token": "。", "children": ["因为风只借过片刻，也未停留……"]}
+          ]
+        },
+        {
+          "token": "术",
+          "children": [
+            {"token": "，", "children": ["殊不知，雪山的美景，殊为壮观"]},
+            {"token": "。", "children": ["艺术无法用语言完全表达……"]}
+          ]
+        }
+      ]
+    };
+
+    let currentPath = "我无法判断雪山的美";
+
+    function renderOptions(node) {
+      const chart = document.getElementById("chart");
+      const options = document.getElementById("options");
+      chart.innerHTML = "";
+      options.innerHTML = "";
+
+      const probs = node.children.map(() => Math.random() * 100);
+      const total = probs.reduce((a, b) => a + b, 0);
+
+      node.children.forEach((child, i) => {
+        const pct = Math.round((probs[i] / total) * 100);
+
+        const bar = document.createElement("div");
+        bar.className = "bar";
+        bar.style.height = pct * 1.2 + "px";
+        bar.innerHTML = `<span>${child.token}<br>${pct}%</span>`;
+        chart.appendChild(bar);
+
+        const btn = document.createElement("button");
+        btn.className = "btn";
+        btn.innerText = child.token;
+        btn.setAttribute("aria-label", `选择令牌 ${child.token}`);
+        btn.onclick = () => {
+          currentPath += child.token;
+          document.getElementById("output").innerText = currentPath;
+          if (Array.isArray(child.children)) {
+            if (typeof child.children[0] === 'string') {
+              currentPath += child.children[0];
+              document.getElementById("output").innerText = currentPath;
+              chart.innerHTML = "";
+              options.innerHTML = "<em>生成结束</em>";
+            } else {
+              renderOptions(child);
+            }
+          } else {
+            chart.innerHTML = "";
+            options.innerHTML = "<em>生成结束</em>";
+          }
+        };
+        options.appendChild(btn);
+      });
+    }
+
+    function rollDice() {
+      const face = document.getElementById("diceFace");
+      const faces = ["1️⃣", "1️⃣", "2️⃣", "2️⃣", "3️⃣", "3️⃣"];
+      let count = 0;
+      const interval = setInterval(() => {
+        face.textContent = faces[Math.floor(Math.random() * 6)];
+        count++;
+        if (count > 20) {
+          clearInterval(interval);
+        }
+      }, 100);
+    }
+
+    function restart() {
+      currentPath = "我无法判断雪山的美";
+      document.getElementById("output").innerText = currentPath;
+      renderOptions(tree);
+      document.getElementById("diceFace").textContent = "🎲";
+    }
+
+    renderOptions(tree);
+  </script>
+</body>
+</html>
