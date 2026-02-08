@@ -1,73 +1,219 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Navigation</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #f0f0f0;
-        }
-        .container {
-            text-align: center;
-        }
-        .button {
-            padding: 10px 20px;
-            font-size: 16px;
-            cursor: pointer;
-            background-color: #4CAF50;
-            color: white;
-            border: none;
-            border-radius: 5px;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Navigation</title>
+  <style>
+    :root{
+      --bg1:#0b1220;
+      --bg2:#0f1b2e;
+      --card:#111f36;
+      --card2:#0f1b2e;
+      --text:#eaf1ff;
+      --muted:#a9b7d1;
+      --border:rgba(255,255,255,.10);
+      --shadow: 0 18px 55px rgba(0,0,0,.45);
+      --btn1:#4CAF50;
+      --btn2:#2f9e44;
+      --btnText:#ffffff;
+      --focus: rgba(80, 167, 255, .55);
+    }
+
+    * { box-sizing: border-box; }
+
+    body{
+      margin:0;
+      min-height:100vh;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(1100px 600px at 20% 10%, rgba(80,167,255,.22), transparent 55%),
+        radial-gradient(900px 520px at 80% 30%, rgba(76,175,80,.18), transparent 55%),
+        linear-gradient(180deg, var(--bg1), var(--bg2));
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 28px 16px;
+    }
+
+    .container{
+      width: min(980px, 100%);
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      padding: 28px;
+    }
+
+    header{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    h1{
+      margin:0;
+      font-size: clamp(22px, 3vw, 30px);
+      letter-spacing: .2px;
+    }
+
+    .subtitle{
+      margin: 6px 0 0 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .meta{
+      color: var(--muted);
+      font-size: 12px;
+      text-align:right;
+      line-height: 1.4;
+      min-width: 180px;
+    }
+
+    /* Table layout, but modern spacing */
+    table{
+      width:100%;
+      border-collapse: separate;
+      border-spacing: 12px;
+      table-layout: fixed;
+    }
+
+    td{
+      padding:0;
+      vertical-align: top;
+    }
+
+    /* Button becomes a card */
+    .nav-btn{
+      width: 100%;
+      min-height: 54px;            /* ensures identical height */
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,.04));
+      color: var(--btnText);
+      cursor: pointer;
+      font-size: 15px;
+      font-weight: 600;
+      letter-spacing: .1px;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      transition: transform .12s ease, box-shadow .12s ease, border-color .12s ease, background .12s ease;
+      user-select:none;
+    }
+
+    .nav-btn:hover{
+      transform: translateY(-2px);
+      border-color: rgba(255,255,255,.22);
+      box-shadow: 0 10px 24px rgba(0,0,0,.30);
+      background: linear-gradient(180deg, rgba(255,255,255,.10), rgba(255,255,255,.05));
+    }
+
+    .nav-btn:active{
+      transform: translateY(0);
+      box-shadow: 0 6px 16px rgba(0,0,0,.28);
+    }
+
+    .nav-btn:focus-visible{
+      outline: 3px solid var(--focus);
+      outline-offset: 2px;
+    }
+
+    /* Optional: visually emphasize a primary set */
+    .nav-btn.primary{
+      border: 1px solid rgba(76,175,80,.45);
+      background: linear-gradient(180deg, rgba(76,175,80,.28), rgba(76,175,80,.14));
+    }
+    .nav-btn.primary:hover{
+      border-color: rgba(76,175,80,.70);
+      background: linear-gradient(180deg, rgba(76,175,80,.34), rgba(76,175,80,.16));
+    }
+
+    /* Make table responsive: stack into one column on small screens */
+    @media (max-width: 720px){
+      table{ border-spacing: 10px; }
+      tr{ display: grid; grid-template-columns: 1fr; gap: 10px; }
+      td{ display:block; }
+      .meta{ text-align:left; }
+    }
+
+    footer{
+      margin-top: 14px;
+      color: var(--muted);
+      font-size: 12px;
+      display:flex;
+      justify-content:space-between;
+      gap: 10px;
+      flex-wrap: wrap;
+      border-top: 1px solid rgba(255,255,255,.10);
+      padding-top: 12px;
+    }
+
+    .hint{
+      opacity:.95;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
+  <div class="container">
+    <header>
+      <div>
         <h1>Welcome to LQ World</h1>
-        <table>
-            <tr>
-                <td><button class="button" onclick="location.href='app1.html'">3D Solar System</button></td>
-                <td><button class="button" onclick="location.href='app2.html'">Income and Profit Chart</button></td>
-            </tr>
-            <tr>
-                <td><button class="button" onclick="location.href='app3.html'">Tetris Basic</button></td>
-                <td><button class="button" onclick="location.href='app4.html'">Firework</button></td>
-            </tr>
-            <tr>
-                <td><button class="button" onclick="location.href='app5.html'">Tetris Advance</button></td>
-                <td><button class="button" onclick="location.href='app6.html'">Transformer</button></td>
-            </tr>
-            <tr>
-                <td><button class="button" onclick="location.href='app7.html'">Bloomberg Calendar</button></td>
-                <td><button class="button" onclick="location.href='app8.html'">Calendar</button></td>
-            </tr>
-            <tr>
-                <td><button class="button" onclick="location.href='app9.html'">Economic Calendar</button></td>
-                <td><button class="button" onclick="location.href='app10.html'">Dictation</button></td>
-            </tr>
-            <tr>
-                <td><button class="button" onclick="location.href='app11.html'">Dictation Screen</button></td>
-                <td><button class="button" onclick="location.href='app12.html'">Dictation v2</button></td>
-            </tr>
-            <tr>
-                <td><button class="button" onclick="location.href='app14.html'">Dictation Screen v2</button></td>
-                <td><button class="button" onclick="location.href='app15.html'">Notify Rest</button></td>
-            </tr>
-            <tr>
-                <td><button class="button" onclick="location.href='app16.html'">Wheel Names</button></td>
-                <td><button class="button" onclick="location.href='app17.html'">LLM Simulator</button></td>
-            </tr>
-            <tr>
-                <td><button class="button" onclick="location.href='app18.html'">JSON Formatter</button></td>
-            </tr>            
-        </table>
-    </div>
+        <p class="subtitle">Pick an app to launch.</p>
+      </div>
+    </header>
+
+    <table aria-label="App Navigation">
+      <tr>
+        <td><button class="nav-btn " onclick="location.href='app1.html'">3D Solar System</button></td>
+        <td><button class="nav-btn " onclick="location.href='app2.html'">Income and Profit Chart</button></td>
+      </tr>
+      <tr>
+        <td><button class="nav-btn" onclick="location.href='app3.html'">Tetris Basic</button></td>
+        <td><button class="nav-btn" onclick="location.href='app4.html'">Firework</button></td>
+      </tr>
+      <tr>
+        <td><button class="nav-btn" onclick="location.href='app5.html'">Tetris Advance</button></td>
+        <td><button class="nav-btn" onclick="location.href='app6.html'">Transformer</button></td>
+      </tr>
+      <tr>
+        <td><button class="nav-btn" onclick="location.href='app7.html'">Bloomberg Calendar</button></td>
+        <td><button class="nav-btn" onclick="location.href='app8.html'">Calendar</button></td>
+      </tr>
+      <tr>
+        <td><button class="nav-btn" onclick="location.href='app9.html'">Economic Calendar</button></td>
+        <td><button class="nav-btn" onclick="location.href='app10.html'">Dictation</button></td>
+      </tr>
+      <tr>
+        <td><button class="nav-btn" onclick="location.href='app11.html'">Dictation Screen</button></td>
+        <td><button class="nav-btn" onclick="location.href='app12.html'">Dictation v2</button></td>
+      </tr>
+      <tr>
+        <td><button class="nav-btn" onclick="location.href='app14.html'">Dictation Screen v2</button></td>
+        <td><button class="nav-btn" onclick="location.href='app15.html'">Notify Rest</button></td>
+      </tr>
+      <tr>
+        <td><button class="nav-btn" onclick="location.href='app16.html'">Wheel Names</button></td>
+        <td><button class="nav-btn" onclick="location.href='app17.html'">LLM Simulator</button></td>
+      </tr>
+      <tr>
+        <td><button class="nav-btn" onclick="location.href='app18.html'">JSON Formatter</button></td>
+        <td><button class="nav-btn" disabled style="opacity:.55; cursor:not-allowed;" aria-disabled="true">More coming soon</button></td>
+      </tr>
+    </table>
+
+    <footer>
+      <div class="hint">Tip: Use Tab and Enter for keyboard navigation.</div>
+      <div>© LQ World</div>
+    </footer>
+  </div>
 </body>
 </html>
